@@ -3,10 +3,10 @@
     #include "nodo.h"
     #include <iostream>
 
-    extern int yylineno; //linea actual donde se encuentra el parser (analisis lexico) lo maneja BISON
-    extern int columna; //columna actual donde se encuentra el parser (analisis lexico) lo maneja BISON
-    extern char *yytext; //lexema actual donde esta el parser (analisis lexico) lo maneja BISON
-    extern Nodo *raiz; // Raiz del arbol
+    extern int yylineno;
+    extern int columna;
+    extern char *yytext;
+    extern Nodo *raiz;
 
     int yyerror(const char* mens){
         std::cout<<mens<<std::endl;
@@ -23,7 +23,6 @@
         class Nodo *nodito;
     }
 
-/*--------------Terminals-------------*/
 %token <text> mkdisk
 %token <text> rmdisk
 %token <text> fdisk
@@ -54,8 +53,6 @@
 %token <text> cadena
 %token <text> identificador
 %token <text> ruta
-
-/*----------Not terminals------------*/
 %type <nodito> INIT
 %type <nodito> COMANDO
 %type <nodito> MKDISK

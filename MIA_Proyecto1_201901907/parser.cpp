@@ -72,10 +72,10 @@
     #include "nodo.h"
     #include <iostream>
 
-    extern int yylineno; //linea actual donde se encuentra el parser (analisis lexico) lo maneja BISON
-    extern int columna; //columna actual donde se encuentra el parser (analisis lexico) lo maneja BISON
-    extern char *yytext; //lexema actual donde esta el parser (analisis lexico) lo maneja BISON
-    extern Nodo *raiz; // Raiz del arbol
+    extern int yylineno;
+    extern int columna;
+    extern char *yytext;
+    extern Nodo *raiz;
 
     int yyerror(const char* mens){
         std::cout<<mens<<std::endl;
@@ -552,11 +552,11 @@ static const yytype_int8 yytranslate[] =
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint8 yyrline[] =
 {
-       0,    78,    78,    80,    84,    85,    89,    93,    94,    97,
-     101,   105,   110,   111,   115,   116,   119,   124,   129,   134,
-     138,   143,   144,   145,   146,   147,   148,   149,   151,   155,
-     160,   161,   162,   163,   165,   171,   172,   173,   176,   180,
-     185,   186,   187,   188,   191,   195,   200
+       0,    75,    75,    77,    81,    82,    86,    90,    91,    94,
+      98,   102,   107,   108,   112,   113,   116,   121,   126,   131,
+     135,   140,   141,   142,   143,   144,   145,   146,   148,   152,
+     157,   158,   159,   160,   162,   168,   169,   170,   173,   177,
+     182,   183,   184,   185,   188,   192,   197
 };
 #endif
 
@@ -1399,13 +1399,13 @@ yyreduce:
   switch (yyn)
     {
   case 2:
-#line 78 "Sintactico.y"
+#line 75 "Sintactico.y"
                { raiz = (yyval.nodito); }
 #line 1405 "parser.cpp"
     break;
 
   case 3:
-#line 80 "Sintactico.y"
+#line 77 "Sintactico.y"
                        {
                          (yyval.nodito) = new Nodo("MKDISK","");
                          (yyval.nodito)->add(*(yyvsp[0].nodito));
@@ -1414,13 +1414,13 @@ yyreduce:
     break;
 
   case 4:
-#line 84 "Sintactico.y"
+#line 81 "Sintactico.y"
                   { (yyval.nodito) = (yyvsp[0].nodito); }
 #line 1420 "parser.cpp"
     break;
 
   case 5:
-#line 85 "Sintactico.y"
+#line 82 "Sintactico.y"
                        {
                           (yyval.nodito) = new Nodo("FDISK","");
                           (yyval.nodito)->add(*(yyvsp[0].nodito));
@@ -1429,7 +1429,7 @@ yyreduce:
     break;
 
   case 6:
-#line 89 "Sintactico.y"
+#line 86 "Sintactico.y"
                        {
                          (yyval.nodito) = new Nodo("MOUNT", "");
                          (yyval.nodito)->add(*(yyvsp[0].nodito));
@@ -1438,13 +1438,13 @@ yyreduce:
     break;
 
   case 7:
-#line 93 "Sintactico.y"
+#line 90 "Sintactico.y"
                    { (yyval.nodito) = (yyvsp[0].nodito); }
 #line 1444 "parser.cpp"
     break;
 
   case 8:
-#line 94 "Sintactico.y"
+#line 91 "Sintactico.y"
                    { (yyval.nodito) = new Nodo("REP","");
                      (yyval.nodito)->add(*(yyvsp[0].nodito));
                    }
@@ -1452,13 +1452,13 @@ yyreduce:
     break;
 
   case 9:
-#line 97 "Sintactico.y"
+#line 94 "Sintactico.y"
                   { (yyval.nodito) = (yyvsp[0].nodito); }
 #line 1458 "parser.cpp"
     break;
 
   case 10:
-#line 101 "Sintactico.y"
+#line 98 "Sintactico.y"
                             {
                              (yyval.nodito) = (yyvsp[-1].nodito);
                              (yyval.nodito)->add(*(yyvsp[0].nodito));
@@ -1467,7 +1467,7 @@ yyreduce:
     break;
 
   case 11:
-#line 105 "Sintactico.y"
+#line 102 "Sintactico.y"
                       {
                        (yyval.nodito) = new Nodo("PARAMETRO","");
                        (yyval.nodito)->add(*(yyvsp[0].nodito));
@@ -1476,13 +1476,13 @@ yyreduce:
     break;
 
   case 12:
-#line 110 "Sintactico.y"
+#line 107 "Sintactico.y"
                              { (yyval.nodito)= new Nodo("size",(yyvsp[0].text)); }
 #line 1482 "parser.cpp"
     break;
 
   case 13:
-#line 111 "Sintactico.y"
+#line 108 "Sintactico.y"
                               {
                                 (yyval.nodito) = new Nodo ("fit", "");
                                 (yyval.nodito)->add(*(yyvsp[0].nodito));
@@ -1491,13 +1491,13 @@ yyreduce:
     break;
 
   case 14:
-#line 115 "Sintactico.y"
+#line 112 "Sintactico.y"
                                  { (yyval.nodito) = new Nodo("unit",(yyvsp[0].text)); }
 #line 1497 "parser.cpp"
     break;
 
   case 15:
-#line 116 "Sintactico.y"
+#line 113 "Sintactico.y"
                                {
                                  (yyval.nodito) = new Nodo("path",(yyvsp[0].text));
                                 }
@@ -1505,7 +1505,7 @@ yyreduce:
     break;
 
   case 16:
-#line 119 "Sintactico.y"
+#line 116 "Sintactico.y"
                              {
                                (yyval.nodito) = new Nodo("path", (yyvsp[0].text));
 
@@ -1514,7 +1514,7 @@ yyreduce:
     break;
 
   case 17:
-#line 124 "Sintactico.y"
+#line 121 "Sintactico.y"
                                {
                                 (yyval.nodito) = new Nodo("RMDISK","");
                                 Nodo *n = new Nodo("path",(yyvsp[0].text));
@@ -1524,7 +1524,7 @@ yyreduce:
     break;
 
   case 18:
-#line 129 "Sintactico.y"
+#line 126 "Sintactico.y"
                                     {
                                       (yyval.nodito) = new Nodo("RMDISK","");
                                       Nodo *ruta = new Nodo("path",(yyvsp[0].text));
@@ -1534,7 +1534,7 @@ yyreduce:
     break;
 
   case 19:
-#line 134 "Sintactico.y"
+#line 131 "Sintactico.y"
                           {
                             (yyval.nodito) = (yyvsp[-1].nodito);
                             (yyval.nodito)->add(*(yyvsp[0].nodito));
@@ -1543,7 +1543,7 @@ yyreduce:
     break;
 
   case 20:
-#line 138 "Sintactico.y"
+#line 135 "Sintactico.y"
                        {
                         (yyval.nodito) = new Nodo("PARAMETRO","");
                         (yyval.nodito)->add(*(yyvsp[0].nodito));
@@ -1552,49 +1552,49 @@ yyreduce:
     break;
 
   case 21:
-#line 143 "Sintactico.y"
+#line 140 "Sintactico.y"
                            { (yyval.nodito) = (yyvsp[0].nodito); }
 #line 1558 "parser.cpp"
     break;
 
   case 22:
-#line 144 "Sintactico.y"
+#line 141 "Sintactico.y"
                                     { (yyval.nodito) = new Nodo("type",(yyvsp[0].text)); }
 #line 1564 "parser.cpp"
     break;
 
   case 23:
-#line 145 "Sintactico.y"
+#line 142 "Sintactico.y"
                                { (yyval.nodito) = new Nodo("delete", "fast"); }
 #line 1570 "parser.cpp"
     break;
 
   case 24:
-#line 146 "Sintactico.y"
+#line 143 "Sintactico.y"
                                { (yyval.nodito) = new Nodo("delete", "full"); }
 #line 1576 "parser.cpp"
     break;
 
   case 25:
-#line 147 "Sintactico.y"
+#line 144 "Sintactico.y"
                                          { (yyval.nodito) = new Nodo("name", (yyvsp[0].text)); }
 #line 1582 "parser.cpp"
     break;
 
   case 26:
-#line 148 "Sintactico.y"
+#line 145 "Sintactico.y"
                                   { (yyval.nodito) = new Nodo("name", (yyvsp[0].text)); }
 #line 1588 "parser.cpp"
     break;
 
   case 27:
-#line 149 "Sintactico.y"
+#line 146 "Sintactico.y"
                               { (yyval.nodito) = new Nodo("add", (yyvsp[0].text)); }
 #line 1594 "parser.cpp"
     break;
 
   case 28:
-#line 151 "Sintactico.y"
+#line 148 "Sintactico.y"
                          {
                            (yyval.nodito) = (yyvsp[-1].nodito);
                            (yyval.nodito)->add(*(yyvsp[0].nodito));
@@ -1603,7 +1603,7 @@ yyreduce:
     break;
 
   case 29:
-#line 155 "Sintactico.y"
+#line 152 "Sintactico.y"
                      {
                         (yyval.nodito) = new Nodo("PARAMETRO","");
                         (yyval.nodito)->add(*(yyvsp[0].nodito));
@@ -1612,31 +1612,31 @@ yyreduce:
     break;
 
   case 30:
-#line 160 "Sintactico.y"
+#line 157 "Sintactico.y"
                                { (yyval.nodito) = new Nodo("path",(yyvsp[0].text)); }
 #line 1618 "parser.cpp"
     break;
 
   case 31:
-#line 161 "Sintactico.y"
+#line 158 "Sintactico.y"
                                { (yyval.nodito) = new Nodo("path", (yyvsp[0].text)); }
 #line 1624 "parser.cpp"
     break;
 
   case 32:
-#line 162 "Sintactico.y"
+#line 159 "Sintactico.y"
                                         { (yyval.nodito) = new Nodo("name", (yyvsp[0].text)); }
 #line 1630 "parser.cpp"
     break;
 
   case 33:
-#line 163 "Sintactico.y"
+#line 160 "Sintactico.y"
                                  { (yyval.nodito) = new Nodo("name",(yyvsp[0].text)); }
 #line 1636 "parser.cpp"
     break;
 
   case 34:
-#line 165 "Sintactico.y"
+#line 162 "Sintactico.y"
                                         {
                                           (yyval.nodito) = new Nodo("UNMOUNT", "");
                                           Nodo *n = new Nodo("id",(yyvsp[0].text));
@@ -1646,25 +1646,25 @@ yyreduce:
     break;
 
   case 35:
-#line 171 "Sintactico.y"
+#line 168 "Sintactico.y"
            { (yyval.nodito) = new Nodo("ajuste", "bf"); }
 #line 1652 "parser.cpp"
     break;
 
   case 36:
-#line 172 "Sintactico.y"
+#line 169 "Sintactico.y"
              { (yyval.nodito) = new Nodo("ajuste", "ff"); }
 #line 1658 "parser.cpp"
     break;
 
   case 37:
-#line 173 "Sintactico.y"
+#line 170 "Sintactico.y"
              { (yyval.nodito) = new Nodo("ajuste", "wf"); }
 #line 1664 "parser.cpp"
     break;
 
   case 38:
-#line 176 "Sintactico.y"
+#line 173 "Sintactico.y"
                     {
                      (yyval.nodito) = (yyvsp[-1].nodito);
                      (yyval.nodito)->add(*(yyvsp[0].nodito));
@@ -1673,7 +1673,7 @@ yyreduce:
     break;
 
   case 39:
-#line 180 "Sintactico.y"
+#line 177 "Sintactico.y"
                   {
                     (yyval.nodito) = new Nodo("PARAMETRO", "");
                     (yyval.nodito)->add(*(yyvsp[0].nodito));
@@ -1682,25 +1682,25 @@ yyreduce:
     break;
 
   case 40:
-#line 185 "Sintactico.y"
+#line 182 "Sintactico.y"
                             { (yyval.nodito) = new Nodo("name","mbr"); }
 #line 1688 "parser.cpp"
     break;
 
   case 41:
-#line 186 "Sintactico.y"
+#line 183 "Sintactico.y"
                                { (yyval.nodito) = new Nodo("name","disk"); }
 #line 1694 "parser.cpp"
     break;
 
   case 42:
-#line 187 "Sintactico.y"
+#line 184 "Sintactico.y"
                                 { (yyval.nodito) = new Nodo("path", (yyvsp[0].text)); }
 #line 1700 "parser.cpp"
     break;
 
   case 43:
-#line 188 "Sintactico.y"
+#line 185 "Sintactico.y"
                                {
                                 (yyval.nodito) = new Nodo("path",(yyvsp[0].text));
                                }
@@ -1708,7 +1708,7 @@ yyreduce:
     break;
 
   case 44:
-#line 191 "Sintactico.y"
+#line 188 "Sintactico.y"
                                       {
                                         (yyval.nodito) = new Nodo("id", (yyvsp[0].text));
                                       }
@@ -1716,7 +1716,7 @@ yyreduce:
     break;
 
   case 45:
-#line 195 "Sintactico.y"
+#line 192 "Sintactico.y"
                                {
                                 (yyval.nodito) = new Nodo("EXEC","");
                                 Nodo *path = new Nodo("path", (yyvsp[0].text));
@@ -1726,7 +1726,7 @@ yyreduce:
     break;
 
   case 46:
-#line 200 "Sintactico.y"
+#line 197 "Sintactico.y"
                                {
                                  (yyval.nodito) = new Nodo("EXEC","");
                                  Nodo *n = new Nodo("path", (yyvsp[0].text));
