@@ -9,7 +9,9 @@ CONFIG -= app_bundle
 
 SOURCES += \
         main.cpp \
+        mount.cpp \
         nodo.cpp \
+        nodolistamount.cpp \
         parser.cpp \
         scanner.cpp
 
@@ -21,6 +23,9 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 HEADERS += \
     Lexico.l \
     Sintactico.y \
+    estructuras.h \
+    mount.h \
     nodo.h \
+    nodolistamount.h \
     parser.h \
     scanner.h
