@@ -49,8 +49,6 @@ INITIAL
     "Full"      { return full; }
     "mbr"       { return mbr; }
     "disk"      { return disk; }
-
-
     "mkfs"       { return mkfs; }
     "login"      { return login; }
     "logout"     { return logout; }

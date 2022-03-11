@@ -9,7 +9,6 @@
 #include <QFileInfo>
 #include <thread>
 #include <chrono>
-
 #include "nodo.h"
 #include "estructuras.h"
 #include "mount.h"
@@ -19,39 +18,12 @@
 
 extern int yyparse();
 extern Nodo *raiz;
-
 ListaMount *lista = new ListaMount();
-bool flag_global = true;
-
-void crearParticionPrimaria(QString, QString, int, char, char, QString);
-void crearParticionExtendida(QString, QString, int, char, char, QString);
-void crearParticionLogica(QString, QString, int, char, char, QString) ;
-void eliminarParticion(QString, QString, QString, QString);
-void agregarParticion(QString, QString ,int ,char,QString);
-bool existeParticion(QString, QString);
-int buscarParticion_Primaria_Extendida(QString, QString);
-int buscarParticion_Logica(QString, QString);
-void Reconocer_Comandos(Nodo*);
-void RMKDISK(Nodo*);
-void RRMDISK(Nodo*);
-void RFDISK(Nodo*);
-void RMOUNT(Nodo*);
-void RUNMOUNT(Nodo*);
-void RMKFS(Nodo*);
+Sesion currentSession;
+bool Bandera_Global = true;
+bool Bandera_login = false;
 void leerComando(char*);
-void crearDisco(QString);
-void RREP(Nodo*);
-void REXEC(Nodo*);
-QString getDirectorio(QString);
-QString getExtension(QString);
-QString getFileName(QString);
-void formatearEXT2(int, int , QString);
-void formatearEXT3(int, int, QString);
-
 using namespace std;
-
-//enum de la lista de comandos y parametros que reconoce el analizador
-//y que nos sive para el recorrido del arbol que nos devuelve el analizador
 enum Choice
 {
     MKDISK = 1,
@@ -112,24 +84,6 @@ enum Choice
     RUTA = 56,
 };
 
-void crearDisco(QString direccion){
-    QString aux = getDirectorio(direccion);
-    string comando = "sudo mkdir -p \'"+aux.toStdString()+"\'";//pa crear el archivo
-    cout<<"direccion";
-    cout<<aux.toStdString();
-    system(comando.c_str());
-    string comando2 = "sudo chmod -R 777 \'"+aux.toStdString()+"\'";//y pa darle los permisos al archivo
-    cout<<"permisis direccion";
-    cout<<aux.toStdString();
-    system(comando2.c_str());
-    string arch = direccion.toStdString();
-    FILE *fp = fopen(arch.c_str(),"wb");//aqui abrimos el archivo para ver si se creo bien
-    if((fp = fopen(arch.c_str(),"wb")))
-        fclose(fp);
-    else
-        cout << "Error al crear el archivo" << endl;
-}
-
 QString getDirectorio(QString direccion){
     string aux = direccion.toStdString();
     string delimiter = "/";
@@ -166,7 +120,27 @@ QString getFileName(QString direccion){
     return QString::fromStdString(res);
 }
 
-void formatearEXT2(int inicio, int tamano, QString direccion){
+//Administracion de discos y particiones
+
+void crearDisco(QString direccion){
+    QString aux = getDirectorio(direccion);
+    string comando = "sudo mkdir -p \'"+aux.toStdString()+"\'";//pa crear el archivo
+    //cout<<"direccion";
+    //cout<<aux.toStdString();
+    system(comando.c_str());
+    string comando2 = "sudo chmod -R 777 \'"+aux.toStdString()+"\'";//y pa darle los permisos al archivo
+    //cout<<"permisos direccion";
+    //cout<<aux.toStdString();
+    system(comando2.c_str());
+    string arch = direccion.toStdString();
+    FILE *fp = fopen(arch.c_str(),"wb");//aqui abrimos el archivo para ver si se creo bien
+    if((fp = fopen(arch.c_str(),"wb")))
+        fclose(fp);
+    else
+        cout << "Error al crear el archivo" << endl;
+}
+
+void FEXT2(int inicio, int tamano, QString direccion){
     double n = (tamano - static_cast<int>(sizeof(SuperBloque)))/(4 + static_cast<int>(sizeof(InodoTable)) +3*static_cast<int>(sizeof(BloqueArchivo)));
     int num_estructuras = static_cast<int>(floor(n));
     int num_bloques = 3*num_estructuras;
@@ -268,7 +242,7 @@ void formatearEXT2(int inicio, int tamano, QString direccion){
     fclose(fp);
 }
 
-void formatearEXT3(int inicio, int tamano, QString direccion){
+void FEXT3( int inicio, int tamano, QString direccion){
     double n = (tamano - static_cast<int>(sizeof(SuperBloque)))/(4 + static_cast<int>(sizeof(InodoTable)) +3*static_cast<int>(sizeof(BloqueArchivo)));
     int num_estructuras = static_cast<int>(floor(n));
     int num_bloques = 3*num_estructuras;
@@ -903,11 +877,11 @@ void eliminarParticion(QString direccion, QString nombre, QString typeDelete, QS
             }
         }
         if(archivo == "principal"){
-            cout << "¿Seguro que desea eliminar la particion? Y/N : " ;
+            cout << "¿Seguro que desea eliminar la particion? S/N : " ;
             getline(cin, opcion);
         }else
-            opcion = "Y";
-        if(opcion.compare("Y") == 0 || opcion.compare("y") == 0){
+            opcion = "S";
+        if(opcion.compare("S") == 0 || opcion.compare("s") == 0){
             if(index != -1){
                 if(!flagExtendida){
                     if(typeDelete == "fast"){
@@ -932,8 +906,7 @@ void eliminarParticion(QString direccion, QString nombre, QString typeDelete, QS
                         strcpy(masterboot.mbr_partition[index].part_name,"");
                         fseek(fp,0,SEEK_SET);
                         fwrite(&masterboot,sizeof(MBR),1,fp);
-                        if(archivo == "principal")
-                        cout << "Particion extendida eliminada con exito!" << endl;
+                        if(archivo == "principal") cout << "Particion extendida eliminada con exito!" << endl;
                     }else{
                         masterboot.mbr_partition[index].part_status = '1';
                         strcpy(masterboot.mbr_partition[index].part_name,"");
@@ -941,8 +914,7 @@ void eliminarParticion(QString direccion, QString nombre, QString typeDelete, QS
                         fwrite(&masterboot,sizeof(MBR),1,fp);
                         fseek(fp,masterboot.mbr_partition[index].part_start,SEEK_SET);
                         fwrite(&buffer,1,masterboot.mbr_partition[index].part_size,fp);
-                        if(archivo == "principal")
-                        cout << "Particion extendida eliminada con exito!" << endl;
+                        if(archivo == "principal") cout << "Particion extendida eliminada con exito!" << endl;
                     }
                 }
             }else{
@@ -1197,6 +1169,49 @@ void agregarParticion(QString direccion, QString nombre, int add, char unit, QSt
     }
 }
 
+//este es de prueba
+
+int tamano_Particion_Logica(QString direccion, QString nombre){
+    string auxPath = direccion.toStdString();
+    string auxName = nombre.toStdString();
+    FILE *fp;
+    if((fp = fopen(auxPath.c_str(),"rb+"))){
+        int extendida = -1;
+        MBR masterboot;
+        fseek(fp,0,SEEK_SET);
+        fread(&masterboot,sizeof(MBR),1,fp);
+        for(int i = 0; i < 4; i++){
+            if(masterboot.mbr_partition[i].part_type == 'E'){
+                extendida = i;
+                break;
+            }
+        }
+        if(extendida != -1){
+            EBR extendedBoot;
+            fseek(fp, masterboot.mbr_partition[extendida].part_start,SEEK_SET);
+            while(fread(&extendedBoot,sizeof(EBR),1,fp)!=0 && (ftell(fp) < masterboot.mbr_partition[extendida].part_start + masterboot.mbr_partition[extendida].part_size)){
+                if(strcmp(extendedBoot.part_name, auxName.c_str()) == 0){
+                    cout<<"Pruebas"<<endl;
+                    cout << extendedBoot.part_start <<endl;
+                    cout << (ftell(fp) - sizeof(EBR)) <<endl;
+                    cout<<"Pruebas nombres"<<endl;
+                    cout << extendedBoot.part_name <<endl;
+                    cout << auxName.c_str() <<endl;
+                    cout << "Pruebas tamano" <<endl;
+                    cout << extendedBoot.part_size <<endl;
+                    return (ftell(fp) - sizeof(EBR));
+                }
+            }
+        }
+        fclose(fp);
+    }
+    return -1;
+}
+
+//Reportes
+
+//Administracion de discos
+
 void RMKFS(Nodo *raiz){
     bool BanderaID = false;
     bool BanderaType = false;
@@ -1262,14 +1277,33 @@ void RMKFS(Nodo *raiz){
                     int tamano = masterboot.mbr_partition[index].part_size;
                     if(fs == 3){
                         cout<< "a prro si jala 3" <<endl;
-                        formatearEXT3(inicio,tamano,aux->direccion);
+                        FEXT3(inicio,tamano,aux->direccion);
                     }else{
                         cout<< "a prro si jala 2" <<endl;
-                        formatearEXT2(inicio,tamano,aux->direccion);
+                        FEXT2(inicio,tamano,aux->direccion);
                     }
                     fclose(fp);
                 }else{
                     index = buscarParticion_Logica(aux->direccion,aux->nombre);
+                    tamano_Particion_Logica(aux->direccion,aux->nombre);
+                    if(index != -1){
+                        EBR extendedBoot;
+                        FILE *fp = fopen(aux->direccion.toStdString().c_str(),"rb+");
+                        fseek(fp, index, SEEK_SET);
+                        fread(&extendedBoot, sizeof (EBR),1,fp);
+                        int inicio = extendedBoot.part_start;
+                        int tamano = extendedBoot.part_size;
+                        if(fs == 3){
+                            cout<< "a prro si jala 3" <<endl;
+                            FEXT3(inicio,tamano,aux->direccion);
+                        }else{
+                            cout<< "a prro si jala 2" <<endl;
+                            FEXT2(inicio,tamano,aux->direccion);
+                        }
+                        fclose(fp);
+                    }
+
+
                 }
             }else
                 cout << "ERROR no se encuentra ninguna particion montada con ese id" << endl;
@@ -1339,17 +1373,21 @@ void RMOUNT(Nodo *raiz){
                         fseek(fp,0,SEEK_SET);
                         fwrite(&masterboot,sizeof(MBR),1,fp);
                         fclose(fp);
-                        int letra = lista->buscarLetra(valPath,valName);
-                        if(letra == -1){
+                        int num = lista->buscarNumero(valPath,valName);
+                        if(num == -1){
                             cout << "ERROR la particion ya se encuentra  montada, no se puede montar de nuevo" << endl;
                         }else{
-                            int num = lista->buscarNumero(valPath, valName);
+                            int letra = lista->buscarLetra(valPath, valName);
                             char auxLetra = static_cast<char>(letra);
-                            string id = "vd";
-                            id += auxLetra + to_string(num);
+                            string id = "07";
+                            id += to_string(num) + auxLetra;
                             NodoListaMount *n = new NodoListaMount(valPath,valName,auxLetra,num);
                             lista->insertarNodo(n);
                             cout << "Particion montada con exito!" << endl;
+                            cout << endl;
+                            cout << "*--------- Particiones Montadas ---------*" <<endl;
+                            cout << "*               Name | ID                *" <<endl;
+                            cout << "*----------------------------------------*" <<endl;
                             lista->mostrarLista();
                         }
                     }else{
@@ -1368,17 +1406,21 @@ void RMOUNT(Nodo *raiz){
                             fwrite(&extendedBoot,sizeof(EBR),1, fp);
                             fclose(fp);
 
-                            int letra = lista->buscarLetra(valPath,valName);
-                            if(letra == -1){
-                                cout << "ERROR la particion ya se encuentra montada, no se puede montar de nuevo" << endl;
+                            int num = lista->buscarNumero(valPath,valName);
+                            if(num == -1){
+                                cout << "ERROR la particion ya se encuentra  montada, no se puede montar de nuevo" << endl;
                             }else{
-                                int num = lista->buscarNumero(valPath,valName);
+                                int letra = lista->buscarLetra(valPath, valName);
                                 char auxLetra = static_cast<char>(letra);
-                                string id = "vd";
-                                id += auxLetra + to_string(num);
+                                string id = "07";
+                                id += to_string(num) + auxLetra;
                                 NodoListaMount *n = new NodoListaMount(valPath, valName, auxLetra, num);
                                 lista->insertarNodo(n);
                                 cout << "Particion montada con exito!" << endl;
+                                cout << endl;
+                                cout << "*--------- Particiones Montadas ---------*" <<endl;
+                                cout << "*               Name | ID                *" <<endl;
+                                cout << "*----------------------------------------*" <<endl;
                                 lista->mostrarLista();
                             }
                         }else{
@@ -1761,6 +1803,2390 @@ void RMKDISK(Nodo *raiz){
     }
 }
 
+//Administracion de Usuarios y Grupos
+
+void LOG_OUT(){
+    if(Bandera_login){
+        Bandera_login = false;
+        currentSession.id_user = -1;
+        currentSession.direccion = "";
+        currentSession.inicioSuper = -1;
+        cout << "...\nEl usuario se deslogueo, ya no se encuentra la session activa " << endl;
+    }else
+        cout << "ERROR no hay ninguna sesion activa" << endl;
+}
+
+InodoTable crearInodo(int size,char type,int perm){
+    InodoTable inodo ;
+    inodo.i_uid = currentSession.id_user;
+    inodo.i_gid = currentSession.id_grp;
+    inodo.i_size = size;
+    inodo.i_atime = time(nullptr);
+    inodo.i_ctime = time(nullptr);
+    inodo.i_mtime = time(nullptr);
+    for(int i = 0; i < 15; i++)
+        inodo.i_block[i] = -1;
+    inodo.i_type = type;
+    inodo.i_perm = perm;
+    return inodo;
+}
+
+BloqueCarpeta crearBloqueCarpeta(){
+    BloqueCarpeta carpeta;
+    for(int i = 0; i < 4; i++){
+        strcpy(carpeta.b_content[i].b_name,"");
+        carpeta.b_content[i].b_inodo = -1;
+    }
+    return carpeta;
+}
+
+bool permisosDeEscritura(int permisos, bool BanderaUser, bool BanderaGroup){
+    string aux = to_string(permisos);
+    char propietario = aux[0];
+    char grupo = aux[1];
+    char otros = aux[2];
+    if((propietario == '2' || propietario == '3' || propietario == '6' || propietario || '7') && BanderaUser)
+        return true;
+    else if((grupo == '2' || grupo == '3' || grupo == '6' || grupo == '7') && BanderaGroup)
+        return true;
+    else if(otros == '2' || otros == '3' || otros == '6' || otros == '7')
+        return true;
+
+    return false;
+}
+
+bool permisosDeLectura(int permisos, bool BanderaUser, bool BanderaGroup){
+    string aux = to_string(permisos);
+    int propietario = aux[0] - '0';
+    int grupo = aux[1] - '0';
+    int otros = aux[2] - '0';
+    if((propietario >= 3) && BanderaUser)
+        return true;
+    else if((grupo >= 3) && BanderaGroup)
+        return true;
+    else if(otros >= 3)
+        return true;
+    return false;
+}
+
+bool permisosLecturaRecursivo(FILE* stream, int n){
+    SuperBloque super;
+    InodoTable inodo;
+    fseek(stream,currentSession.inicioSuper,SEEK_SET);
+    fread(&super,sizeof(SuperBloque),1,stream);
+    fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*n,SEEK_SET);
+    fread(&inodo,sizeof(InodoTable),1,stream);
+    bool permisos = permisosDeLectura(inodo.i_perm,(inodo.i_uid == currentSession.id_user),(inodo.i_gid == currentSession.id_grp));
+    if(permisos){
+        bool response = true;
+        if(inodo.i_type == '0'){
+            for (int i = 0; i < 12; i++) {
+                if(inodo.i_block[i] != -1){
+                    char byte = '0';
+                    fseek(stream,super.s_bm_block_start + inodo.i_block[i],SEEK_SET);
+                    byte = static_cast<char>(fgetc(stream));
+                    if(byte == '1'){
+                        BloqueCarpeta carpeta;
+                        fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*inodo.i_block[i],SEEK_SET);
+                        fread(&carpeta,sizeof(BloqueCarpeta),1,stream);
+                        for (int j = 0; j < 4; j++) {
+                            if(carpeta.b_content[j].b_inodo != -1){
+                                if(strcmp(carpeta.b_content[j].b_name,".")!=0 && strcmp(carpeta.b_content[j].b_name,"..")!=0)
+                                    response = permisosLecturaRecursivo(stream,carpeta.b_content[j].b_inodo);
+                            }
+                        }
+                    }else{
+                        InodoTable inodoAux;
+                        fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*inodo.i_block[i],SEEK_SET);
+                        fread(&inodoAux,sizeof(InodoTable),1,stream);
+                        response = permisosDeLectura(inodoAux.i_perm,(inodoAux.i_uid == currentSession.id_user),(inodoAux.i_gid == currentSession.id_grp));
+                    }
+                }
+            }
+            return response;
+        }else
+            return true;
+    }else
+        return false;
+}
+
+bool permisosEscrituraRecursivo(FILE* stream, int n){
+    SuperBloque super;
+    InodoTable inodo;
+    fseek(stream,currentSession.inicioSuper,SEEK_SET);
+    fread(&super,sizeof(SuperBloque),1,stream);
+    fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*n,SEEK_SET);
+    fread(&inodo,sizeof(InodoTable),1,stream);
+
+    bool permisos = permisosDeEscritura(inodo.i_perm,(inodo.i_uid == currentSession.id_user),(inodo.i_gid == currentSession.id_grp));
+    if(permisos){
+        bool response = true;
+        if(inodo.i_type == '0'){
+            for (int i = 0; i < 12; i++) {
+                if(inodo.i_block[i] != -1){
+                    char byte = '0';
+                    fseek(stream,super.s_bm_block_start + inodo.i_block[i],SEEK_SET);
+                    byte = static_cast<char>(fgetc(stream));
+                    if(byte == '1'){
+                        BloqueCarpeta carpeta;
+                        fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*inodo.i_block[i],SEEK_SET);
+                        fread(&carpeta,sizeof(BloqueCarpeta),1,stream);
+                        for (int j = 0; j < 4; j++) {
+                            if(carpeta.b_content[j].b_inodo != -1){
+                                if(strcmp(carpeta.b_content[j].b_name,".")!=0 && strcmp(carpeta.b_content[j].b_name,"..")!=0)
+                                    response = permisosEscrituraRecursivo(stream,carpeta.b_content[j].b_inodo);
+                            }
+                        }
+                    }else{
+                        InodoTable inodoAux;
+                        fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*inodo.i_block[i],SEEK_SET);
+                        fread(&inodoAux,sizeof(InodoTable),1,stream);
+                        response = permisosDeEscritura(inodoAux.i_perm,(inodoAux.i_uid == currentSession.id_user),(inodoAux.i_gid == currentSession.id_grp));
+                    }
+                }
+            }
+            return response;
+        }else //archivo
+            return true;
+    }else
+        return false;
+}
+
+int byteInodoBloque(FILE *stream,int pos, char tipo){
+    SuperBloque super;
+    fseek(stream,currentSession.inicioSuper,SEEK_SET);
+    fread(&super,sizeof(SuperBloque),1,stream);
+    if(tipo == '1'){
+        return (super.s_inode_start + static_cast<int>(sizeof(InodoTable))*pos);
+    }else if(tipo == '2')
+        return (super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*pos);
+    return 0;
+}
+
+void cambiarPermisosRecursivo(FILE* stream, int n, int permisos){
+    SuperBloque super;
+    InodoTable inodo;
+    BloqueCarpeta carpeta;
+    char byte ='0';
+    fseek(stream,currentSession.inicioSuper,SEEK_SET);
+    fread(&super,sizeof(SuperBloque),1,stream);
+    fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*n,SEEK_SET);
+    fread(&inodo,sizeof(InodoTable),1,stream);
+    inodo.i_perm = permisos;
+    fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*n,SEEK_SET);
+    fwrite(&inodo,sizeof(InodoTable),1,stream);
+
+    for(int i = 0; i < 15; i++){
+        if(inodo.i_block[i] != -1){
+            fseek(stream,super.s_bm_block_start + inodo.i_block[i],SEEK_SET);
+            byte = static_cast<char>(fgetc(stream));
+            if(byte == '1'){
+                fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*inodo.i_block[i],SEEK_SET);
+                fread(&carpeta,sizeof(BloqueCarpeta),1,stream);
+                for(int j = 0; j < 4; j++){
+                    if(carpeta.b_content[j].b_inodo != -1){
+                        if(strcmp(carpeta.b_content[j].b_name,".")!=0 &&  strcmp(carpeta.b_content[j].b_name,"..")!=0)
+                            cambiarPermisosRecursivo(stream,carpeta.b_content[j].b_inodo,permisos);
+                    }
+                }
+            }
+        }
+    }
+}
+
+int buscarContentenido(FILE* stream,int numInodo,InodoTable &inodo,BloqueCarpeta &carpeta, BloqueApuntadores &apuntadores,int &content,int &bloque,int &pointer){
+    int libre = 0;
+    SuperBloque super;
+    fseek(stream,currentSession.inicioSuper,SEEK_SET);
+    fread(&super,sizeof(SuperBloque),1,stream);
+    fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*numInodo,SEEK_SET);
+    fread(&inodo,sizeof(InodoTable),1,stream);
+    for(int i = 0; i < 15; i++){
+        if(inodo.i_block[i] != -1){
+            if(i == 12){
+                fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueApuntadores))*inodo.i_block[i],SEEK_SET);
+                fread(&apuntadores,sizeof(BloqueApuntadores),1,stream);
+                for(int j = 0; j < 16; j++){
+                    if(apuntadores.b_pointer[j] != -1){
+                        fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueApuntadores))*apuntadores.b_pointer[j],SEEK_SET);
+                        fread(&carpeta,sizeof(BloqueCarpeta),1,stream);
+                        for(int k = 0; k < 4; k++){
+                            if(carpeta.b_content[k].b_inodo == -1){
+                                libre = 1;
+                                bloque = i;
+                                pointer = j;
+                                content = k;
+                                break;
+                            }
+                        }
+                    }
+                    if(libre == 1)
+                        break;
+                }
+            }else if(i == 13){
+
+            }else if(i == 14){
+
+            }else{
+                fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*inodo.i_block[i],SEEK_SET);
+                fread(&carpeta,sizeof(BloqueCarpeta),1,stream);
+                for(int j = 0; j < 4; j++){
+                    if(carpeta.b_content[j].b_inodo == -1){
+                        libre = 1;
+                        bloque = i;
+                        content = j;
+                        break;
+                    }
+                }
+            }
+        }
+        if(libre == 1)
+            break;
+    }
+    return libre;
+}
+
+int buscarCarpetaArchivo(FILE *stream, char* path){
+    SuperBloque super;
+    InodoTable inodo;
+    BloqueCarpeta carpeta;
+    BloqueApuntadores apuntador;
+    QList<string> lista = QList<string>();
+    char *token = strtok(path,"/");
+    int cont = 0;
+    int numInodo = 0;
+    while(token != nullptr){
+        lista.append(token);
+        cont++;
+        token = strtok(nullptr,"/");
+    }
+    fseek(stream,currentSession.inicioSuper,SEEK_SET);
+    fread(&super,sizeof(SuperBloque),1,stream);
+    numInodo = super.s_inode_start;
+
+    for (int cont2 = 0; cont2 < cont; cont2++) {
+        fseek(stream,numInodo,SEEK_SET);
+        fread(&inodo,sizeof(InodoTable),1,stream);
+        int siguiente = 0;
+        for(int i = 0; i < 15; i++){
+            if(inodo.i_block[i] != -1){
+                int byteBloque = byteInodoBloque(stream,inodo.i_block[i],'2');
+                fseek(stream,byteBloque,SEEK_SET);
+                if(i < 12){
+                    fread(&carpeta,sizeof(BloqueCarpeta),1,stream);
+                    for (int j = 0; j < 4; j++) {
+                        if((cont2 == cont - 1) && (strcasecmp(carpeta.b_content[j].b_name,lista.at(cont2).c_str()) == 0)){//Tendria que ser la carpeta
+                            return carpeta.b_content[j].b_inodo;
+                        }else if((cont2 != cont - 1) && (strcasecmp(carpeta.b_content[j].b_name,lista.at(cont2).c_str()) == 0)){
+                            numInodo = byteInodoBloque(stream,carpeta.b_content[j].b_inodo,'1');
+                            siguiente = 1;
+                            break;
+                        }
+                    }
+                }else if(i == 12){
+                    fread(&apuntador,sizeof(BloqueApuntadores),1,stream);
+                    for(int j = 0; j < 16; j++){
+                        if(apuntador.b_pointer[j] != -1){
+                            byteBloque = byteInodoBloque(stream,apuntador.b_pointer[j],'2');
+                            fseek(stream,byteBloque,SEEK_SET);
+                            fread(&carpeta,sizeof(BloqueCarpeta),1,stream);
+                            for (int k = 0; k < 4; k++) {
+                                if((cont2 == cont - 1) && (strcasecmp(carpeta.b_content[k].b_name,lista.at(cont2).c_str()) == 0)){//Tendria que ser la carpeta
+                                    return carpeta.b_content[k].b_inodo;
+                                }else if((cont2 != cont - 1) && (strcasecmp(carpeta.b_content[k].b_name,lista.at(cont2).c_str()) == 0)){
+                                    numInodo = byteInodoBloque(stream,carpeta.b_content[k].b_inodo,'1');
+                                    siguiente = 1;
+                                    break;
+                                }
+                            }
+                            if(siguiente == 1)
+                                break;
+                        }
+                    }
+                }else if(i == 13){
+
+                }else if(i == 14){
+
+                }
+                if(siguiente == 1)
+                    break;
+            }
+        }
+    }
+
+    return -1;
+}
+
+int buscarExisteGrupo(QString name){
+    FILE *fp = fopen(currentSession.direccion.toStdString().c_str(),"rb+");
+    char cadena[400] = "\0";
+    SuperBloque super;
+    InodoTable inodo;
+    fseek(fp,currentSession.inicioSuper,SEEK_SET);
+    fread(&super,sizeof(SuperBloque),1,fp);
+    fseek(fp,super.s_inode_start + static_cast<int>(sizeof(InodoTable)), SEEK_SET);
+    fread(&inodo,sizeof(InodoTable),1,fp);
+    for(int i = 0; i < 15; i++){
+        if(inodo.i_block[i] != -1){
+            BloqueArchivo archivo;
+            fseek(fp,super.s_block_start,SEEK_SET);
+            for(int j = 0; j <= inodo.i_block[i]; j++){
+                fread(&archivo,sizeof(BloqueArchivo),1,fp);
+            }
+            strcat(cadena,archivo.b_content);
+        }
+    }
+    fclose(fp);
+    char *end_str;
+    char *token = strtok_r(cadena,"\n",&end_str);
+    while(token != nullptr){
+        char id[2];
+        char tipo[2];
+        char group[12];
+        char *end_token;
+        char *token2 = strtok_r(token,",",&end_token);
+        strcpy(id,token2);
+        if(strcmp(id,"0") != 0){
+            token2 = strtok_r(nullptr,",",&end_token);
+            strcpy(tipo,token2);
+            if(strcmp(tipo,"G") == 0){
+                strcpy(group,end_token);
+                if(strcmp(group,name.toStdString().c_str()) == 0)
+                    return atoi(id);
+            }
+        }
+        token = strtok_r(nullptr,"\n",&end_str);
+    }
+    return -1;
+}
+
+bool buscarExisteUsuario(QString name){
+    FILE *fp = fopen(currentSession.direccion.toStdString().c_str(),"rb+");
+    char cadena[400] = "\0";
+    SuperBloque super;
+    InodoTable inodo;
+    fseek(fp,currentSession.inicioSuper,SEEK_SET);
+    fread(&super,sizeof(SuperBloque),1,fp);
+    fseek(fp,super.s_inode_start + static_cast<int>(sizeof(InodoTable)), SEEK_SET);
+    fread(&inodo,sizeof(InodoTable),1,fp);
+    for(int i = 0; i < 15; i++){
+        if(inodo.i_block[i] != -1){
+            BloqueArchivo archivo;
+            fseek(fp,super.s_block_start,SEEK_SET);
+            for(int j = 0; j <= inodo.i_block[i]; j++){
+                fread(&archivo,sizeof(BloqueArchivo),1,fp);
+            }
+            strcat(cadena,archivo.b_content);
+        }
+    }
+
+    fclose(fp);
+    char *end_str;
+    char *token = strtok_r(cadena,"\n",&end_str);
+    while(token != nullptr){
+        char id[2];
+        char tipo[2];
+        char user[12];
+        char *end_token;
+        char *token2 = strtok_r(token,",",&end_token);
+        strcpy(id,token2);
+        if(strcmp(id,"0") != 0){//Verificar que no sea un U/G eliminado
+            token2 = strtok_r(nullptr,",",&end_token);
+            strcpy(tipo,token2);
+            if(strcmp(tipo,"U") == 0){
+                token2 = strtok_r(nullptr,",",&end_token);
+                token2 = strtok_r(nullptr,",",&end_token);
+                strcpy(user,token2);
+
+                if(strcmp(user,name.toStdString().c_str()) == 0)
+                    return true;
+            }
+        }
+        token = strtok_r(nullptr,"\n",&end_str);
+    }
+
+    return false;
+}
+
+void eliminarGrupo(QString name){
+    FILE *fp = fopen(currentSession.direccion.toStdString().c_str(),"rb+");
+    SuperBloque super;
+    InodoTable inodo;
+    BloqueArchivo archivo;
+    int col = 1;
+    char actual;
+    int posicion = 0;
+    int numBloque = 0;
+    int id = -1;
+    char tipo = '\0';
+    string grupo = "";
+    string palabra = "";
+    bool Bandera = false;
+    fseek(fp,currentSession.inicioSuper,SEEK_SET);
+    fread(&super,sizeof(SuperBloque),1,fp);
+    fseek(fp,super.s_inode_start + static_cast<int>(sizeof(InodoTable)),SEEK_SET);
+    fread(&inodo,sizeof(InodoTable),1,fp);
+
+    for (int i = 0; i < 12; i++) {
+        if(inodo.i_block[i] != -1){
+            fseek(fp,super.s_block_start + static_cast<int>(sizeof(BloqueArchivo))*inodo.i_block[i],SEEK_SET);
+            fread(&archivo,sizeof(BloqueArchivo),1,fp);
+            for(int j = 0; j < 63; j++){
+                actual = archivo.b_content[j];
+                if(actual=='\n'){
+                    if(tipo == 'G'){
+                        grupo = palabra;
+                        if(strcmp(grupo.c_str(),name.toStdString().c_str()) == 0){
+                            fseek(fp,super.s_block_start+static_cast<int>(sizeof(BloqueArchivo))*numBloque,SEEK_SET);
+                            fread(&archivo,sizeof(BloqueCarpeta),1,fp);
+                            archivo.b_content[posicion] = '0';
+                            fseek(fp,super.s_block_start+static_cast<int>(sizeof(BloqueArchivo))*numBloque,SEEK_SET);
+                            fwrite(&archivo,sizeof(BloqueArchivo),1,fp);
+                            cout << "Grupo eliminado con exito" << endl;
+                            Bandera = true;
+                            break;
+                        }
+                    }
+                    col = 1;
+                    palabra = "";
+                }else if(actual != ','){
+                    palabra += actual;
+                    col++;
+                }else if(actual == ','){
+                    if(col == 2){
+                        id = atoi(palabra.c_str());
+                        posicion = j-1;
+                        numBloque = inodo.i_block[i];
+                    }
+                    else if(col == 4)
+                        tipo = palabra[0];
+                    col++;
+                    palabra = "";
+                }
+            }
+            if(Bandera)
+                break;
+        }
+    }
+
+    fclose(fp);
+}
+
+void eliminarUsuario(QString name){
+    FILE *fp = fopen(currentSession.direccion.toStdString().c_str(),"rb+");
+    SuperBloque super;
+    InodoTable inodo;
+    BloqueArchivo archivo;
+    int col = 1;
+    char actual;
+    string palabra = "";
+    int posicion = 0;
+    int numBloque = 0;
+    int id = -1;
+    char tipo = '\0';
+    string grupo = "";
+    string usuario = "";
+    bool Bandera = false;
+    fseek(fp,currentSession.inicioSuper,SEEK_SET);
+    fread(&super,sizeof(SuperBloque),1,fp);
+    fseek(fp,super.s_inode_start + static_cast<int>(sizeof(InodoTable)),SEEK_SET);
+    fread(&inodo,sizeof(InodoTable),1,fp);
+    for (int i = 0; i < 12; i++) {
+        if(inodo.i_block[i] != -1){
+            fseek(fp,super.s_block_start + static_cast<int>(sizeof(BloqueArchivo))*inodo.i_block[i],SEEK_SET);
+            fread(&archivo,sizeof(BloqueArchivo),1,fp);
+            for(int j = 0; j < 63; j++){
+                actual = archivo.b_content[j];
+                if(actual=='\n'){
+                    if(tipo == 'U'){
+                        if(strcmp(usuario.c_str(),name.toStdString().c_str()) == 0){
+                            fseek(fp,super.s_block_start+static_cast<int>(sizeof(BloqueArchivo))*numBloque,SEEK_SET);
+                            fread(&archivo,sizeof(BloqueArchivo),1,fp);
+                            archivo.b_content[posicion] = '0';
+                            fseek(fp,super.s_block_start+static_cast<int>(sizeof(BloqueArchivo))*numBloque,SEEK_SET);
+                            fwrite(&archivo,sizeof(BloqueArchivo),1,fp);
+                            cout << "Usuario eliminado con exito" << endl;
+                            Bandera = true;
+                            break;
+                        }
+                        usuario = "";
+                        grupo = "";
+                    }
+                    col = 1;
+                    palabra = "";
+                }else if(actual != ','){
+                    palabra += actual;
+                    col++;
+                }else if(actual == ','){
+                    if(col == 2){
+                        id = atoi(palabra.c_str());
+                        posicion = j-1;
+                        numBloque = inodo.i_block[i];
+                    }
+                    else if(col == 4)
+                        tipo = palabra[0];
+                    else if(grupo == "")
+                        grupo = palabra;
+                    else if(usuario == "")
+                        usuario = palabra;
+                    col++;
+                    palabra = "";
+                }
+            }
+            if(Bandera)
+                break;
+        }
+    }
+    fclose(fp);
+}
+
+void eliminarCarpetaArchivo(FILE *stream, int n){
+    SuperBloque super;
+    InodoTable inodo;
+    char buffer = '0';
+    fseek(stream,currentSession.inicioSuper,SEEK_SET);
+    fread(&super,sizeof(SuperBloque),1,stream);
+    fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*n,SEEK_SET);
+    fread(&inodo,sizeof(InodoTable),1,stream);
+    if(inodo.i_type == '0'){
+        for (int i = 0; i < 12; i++) {
+            if(inodo.i_block[i] != -1){
+                char byte = '0';
+                fseek(stream,super.s_bm_block_start + inodo.i_block[i],SEEK_SET);
+                byte = static_cast<char>(fgetc(stream));
+                if(byte == '1'){
+                    BloqueCarpeta carpeta;
+                    fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*inodo.i_block[i],SEEK_SET);
+                    fread(&carpeta,sizeof(BloqueCarpeta),1,stream);
+                    for (int j = 0; j < 4; j++) {
+                        if(carpeta.b_content[j].b_inodo != -1){
+                            if(strcmp(carpeta.b_content[j].b_name,".")!=0 && strcmp(carpeta.b_content[j].b_name,"..")!=0)
+                                eliminarCarpetaArchivo(stream,carpeta.b_content[j].b_inodo);
+                        }
+                    }
+                    fseek(stream,super.s_bm_block_start + inodo.i_block[i],SEEK_SET);
+                    fputc(buffer,stream);
+                }
+            }
+        }
+        fseek(stream,super.s_bm_inode_start + n,SEEK_SET);
+        fputc(buffer,stream);
+    }else{
+        for (int i = 0; i < 15; i++) {
+            if(inodo.i_block[i] != -1){
+                fseek(stream,super.s_bm_block_start + inodo.i_block[i],SEEK_SET);
+                fputc(buffer,stream);
+            }
+        }
+        fseek(stream,super.s_bm_inode_start + n,SEEK_SET);
+        fputc(buffer,stream);
+    }
+
+}
+
+int getID_usr(){
+    FILE *fp = fopen(currentSession.direccion.toStdString().c_str(),"rb+");
+    char cadena[400] = "\0";
+    int res = 0;
+    SuperBloque super;
+    InodoTable inodo;
+    fseek(fp,currentSession.inicioSuper,SEEK_SET);
+    fread(&super,sizeof(SuperBloque),1,fp);
+    fseek(fp,super.s_inode_start + static_cast<int>(sizeof(InodoTable)), SEEK_SET);
+    fread(&inodo,sizeof(InodoTable),1,fp);
+    for(int i = 0; i < 15; i++){
+        if(inodo.i_block[i] != -1){
+            BloqueArchivo archivo;
+            fseek(fp,super.s_block_start,SEEK_SET);
+            for(int j = 0; j <= inodo.i_block[i]; j++){
+                fread(&archivo,sizeof(BloqueArchivo),1,fp);
+            }
+            strcat(cadena,archivo.b_content);
+        }
+    }
+
+    fclose(fp);
+    char *end_str;
+    char *token = strtok_r(cadena,"\n",&end_str);
+    while(token != nullptr){
+        char id[2];
+        char tipo[2];
+        char *end_token;
+        char *token2 = strtok_r(token,",",&end_token);
+        strcpy(id,token2);
+        if(strcmp(id,"0") != 0){
+            token2 = strtok_r(nullptr,",",&end_token);
+            strcpy(tipo,token2);
+            if(strcmp(tipo,"U") == 0)
+                res++;
+        }
+        token = strtok_r(nullptr,"\n",&end_str);
+    }
+    return ++res;
+}
+
+int getID_grp(){
+    FILE *fp = fopen(currentSession.direccion.toStdString().c_str(),"rb+");
+    char cadena[400] = "\0";
+    int aux_id = -1;
+    SuperBloque super;
+    InodoTable inodo;
+    fseek(fp,currentSession.inicioSuper,SEEK_SET);
+    fread(&super,sizeof(SuperBloque),1,fp);
+    fseek(fp,super.s_inode_start + static_cast<int>(sizeof(InodoTable)), SEEK_SET);
+    fread(&inodo,sizeof(InodoTable),1,fp);
+    for(int i = 0; i < 15; i++){
+        if(inodo.i_block[i] != -1){
+            BloqueArchivo archivo;
+            fseek(fp,super.s_block_start,SEEK_SET);
+            for(int j = 0; j <= inodo.i_block[i]; j++){
+                fread(&archivo,sizeof(BloqueArchivo),1,fp);
+            }
+            strcat(cadena,archivo.b_content);
+        }
+    }
+
+    fclose(fp);
+
+    char *end_str;
+    char *token = strtok_r(cadena,"\n",&end_str);
+    while(token != nullptr){
+        char id[2];
+        char tipo[2];
+        char *end_token;
+        char *token2 = strtok_r(token,",",&end_token);
+        strcpy(id,token2);
+        if(strcmp(id,"0") != 0){
+            token2 = strtok_r(nullptr,",",&end_token);
+            strcpy(tipo,token2);
+            if(strcmp(tipo,"G") == 0){
+                aux_id = atoi(id);
+            }
+
+        }
+        token = strtok_r(nullptr,"\n",&end_str);
+    }
+    return ++aux_id;
+}
+
+int buscarBit(FILE *fp, char tipo, char fit){
+    SuperBloque super;
+    int inicio_bm = 0;
+    char tempBit = '0';
+    int bit_libre = -1;
+    int tam_bm = 0;
+    fseek(fp,currentSession.inicioSuper,SEEK_SET);
+    fread(&super,sizeof(SuperBloque),1,fp);
+    if(tipo == 'I'){
+        tam_bm = super.s_inodes_count;
+        inicio_bm = super.s_bm_inode_start;
+    }else if(tipo == 'B'){
+        tam_bm = super.s_blocks_count;
+        inicio_bm = super.s_bm_block_start;
+    }
+    if(fit == 'F'){
+        for(int i = 0; i < tam_bm; i++){
+            fseek(fp,inicio_bm + i,SEEK_SET);
+            tempBit = static_cast<char>(fgetc(fp));
+            if(tempBit == '0'){
+                bit_libre = i;
+                return bit_libre;
+            }
+        }
+
+        if(bit_libre == -1)
+            return -1;
+    }else if(fit == 'B'){
+        int libres = 0;
+        int auxLibres = -1;
+
+        for(int i = 0; i < tam_bm; i++){
+            fseek(fp,inicio_bm + i,SEEK_SET);
+            tempBit = static_cast<char>(fgetc(fp));
+            if(tempBit == '0'){
+                libres++;
+                if(i+1 == tam_bm){
+                    if(auxLibres == -1 || auxLibres == 0)
+                        auxLibres = libres;
+                    else{
+                        if(auxLibres > libres)
+                            auxLibres = libres;
+                    }
+                    libres = 0;
+                }
+            }else if(tempBit == '1'){
+                if(auxLibres == -1 || auxLibres == 0)
+                    auxLibres = libres;
+                else{
+                    if(auxLibres > libres)
+                        auxLibres = libres;
+                }
+                libres = 0;
+            }
+        }
+        for(int i = 0; i < tam_bm; i++){
+            fseek(fp,inicio_bm + i, SEEK_SET);
+            tempBit = static_cast<char>(fgetc(fp));
+            if(tempBit == '0'){
+                libres++;
+                if(i+1 == tam_bm)
+                    return ((i+1)-libres);
+            }else if(tempBit == '1'){
+                if(auxLibres == libres)
+                    return ((i+1) - libres);
+                libres = 0;
+            }
+        }
+
+        return -1;
+    }else if(fit == 'W'){
+        int libres = 0;
+        int auxLibres = -1;
+
+        for (int i = 0; i < tam_bm; i++) {
+            fseek(fp,inicio_bm + i, SEEK_SET);
+            tempBit = static_cast<char>(fgetc(fp));
+            if(tempBit == '0'){
+                libres++;
+                if(i+1 == tam_bm){
+                    if(auxLibres == -1 || auxLibres == 0)
+                        auxLibres = libres;
+                    else {
+                        if(auxLibres < libres)
+                            auxLibres = libres;
+                    }
+                    libres = 0;
+                }
+            }else if(tempBit == '1'){
+                if(auxLibres == -1 || auxLibres == 0)
+                    auxLibres = libres;
+                else{
+                    if(auxLibres < libres)
+                        auxLibres = libres;
+                }
+                libres = 0;
+            }
+        }
+
+        for (int i = 0; i < tam_bm; i++) {
+            fseek(fp,inicio_bm + i, SEEK_SET);
+            tempBit = static_cast<char>(fgetc(fp));
+            if(tempBit == '0'){
+                libres++;
+                if(i+1 == tam_bm)
+                    return ((i+1) - libres);
+            }else if(tempBit == '1'){
+                if(auxLibres == libres)
+                    return ((i+1) - libres);
+                libres = 0;
+            }
+        }
+        return -1;
+    }
+    return 0;
+}
+
+void agregarUsersTXT(QString datos){
+    FILE *fp = fopen(currentSession.direccion.toStdString().c_str(), "rb+");
+    SuperBloque super;
+    InodoTable inodo;
+    BloqueArchivo archivo;
+    int blockIndex = 0;
+    fseek(fp,currentSession.inicioSuper,SEEK_SET);
+    fread(&super,sizeof(SuperBloque),1,fp);
+    fseek(fp,super.s_inode_start + static_cast<int>(sizeof(InodoTable)), SEEK_SET);
+    fread(&inodo,sizeof(InodoTable),1,fp);
+    for(int i = 0; i < 12; i++){
+        if(inodo.i_block[i] != -1)
+            blockIndex = inodo.i_block[i];
+    }
+    fseek(fp,super.s_block_start + static_cast<int>(sizeof(BloqueArchivo))*blockIndex,SEEK_SET);
+    fread(&archivo,sizeof(BloqueArchivo),1,fp);
+    int enUso = static_cast<int>(strlen(archivo.b_content));
+    int libre = 63 - enUso;
+    if(datos.length() <= libre){
+        strcat(archivo.b_content,datos.toStdString().c_str());
+        fseek(fp,super.s_block_start + static_cast<int>(sizeof(BloqueArchivo))*blockIndex,SEEK_SET);
+        fwrite(&archivo,sizeof(BloqueArchivo),1,fp);
+        fseek(fp,super.s_inode_start + static_cast<int>(sizeof(InodoTable)),SEEK_SET);
+        fread(&inodo,sizeof(InodoTable),1,fp);
+        inodo.i_size = inodo.i_size + datos.length();
+        inodo.i_mtime = time(nullptr);
+        fseek(fp,super.s_inode_start + static_cast<int>(sizeof(InodoTable)),SEEK_SET);
+        fwrite(&inodo,sizeof(InodoTable),1,fp);
+    }else{
+        QString aux = "";
+        QString aux2 = "";
+        int i = 0;
+        for(i = 0; i < libre; i++)
+            aux += datos.at(i);
+        for(; i < datos.length(); i++)
+            aux2  += datos.at(i);
+        strcat(archivo.b_content,aux.toStdString().c_str());
+        fseek(fp,super.s_block_start + static_cast<int>(sizeof(BloqueArchivo))*blockIndex,SEEK_SET);
+        fwrite(&archivo,sizeof(BloqueArchivo),1,fp);
+        BloqueArchivo auxArchivo;
+        strcpy(auxArchivo.b_content,aux2.toStdString().c_str());
+        int bit = buscarBit(fp,'B',currentSession.fit);
+        fseek(fp,super.s_bm_block_start + bit,SEEK_SET);
+        fputc('2',fp);
+        fseek(fp,super.s_block_start + (static_cast<int>(sizeof(BloqueArchivo))*bit),SEEK_SET);
+        fwrite(&auxArchivo,sizeof(BloqueArchivo),1,fp);
+        fseek(fp,super.s_inode_start + static_cast<int>(sizeof(InodoTable)),SEEK_SET);
+        fread(&inodo,sizeof(InodoTable),1,fp);
+        inodo.i_size = inodo.i_size + datos.length();
+        inodo.i_mtime = time(nullptr);
+        inodo.i_block[blockIndex] = bit;
+        fseek(fp,super.s_inode_start + static_cast<int>(sizeof(InodoTable)),SEEK_SET);
+        fwrite(&inodo,sizeof(InodoTable),1,fp);
+        super.s_first_blo = super.s_first_blo + 1;
+        super.s_free_blocks_count = super.s_free_blocks_count - 1;
+        fseek(fp,currentSession.inicioSuper,SEEK_SET);
+        fwrite(&super,sizeof(SuperBloque),1,fp);
+    }
+    fclose(fp);
+}
+
+void guardarJournal(char* operacion,int tipo,int permisos,char *nombre,char *content){
+    SuperBloque super;
+    Journal registro;
+    strcpy(registro.journal_operation_type,operacion);
+    registro.journal_type = tipo;
+    strcpy(registro.journal_name,nombre);
+    strcpy(registro.journal_content,content);
+    registro.journal_date = time(nullptr);
+    registro.journal_owner = currentSession.id_user;
+    registro.journal_permissions = permisos;
+    FILE *fp = fopen(currentSession.direccion.toStdString().c_str(),"rb+");
+    Journal registroAux;
+    bool ultimo = false;
+    fseek(fp,currentSession.inicioSuper,SEEK_SET);
+    fread(&super,sizeof(SuperBloque),1,fp);
+    int inicio_journal = currentSession.inicioSuper + static_cast<int>(sizeof(SuperBloque));
+    int final_journal = super.s_bm_inode_start;
+    fseek(fp,inicio_journal,SEEK_SET);
+    while((ftell(fp) < final_journal) && !ultimo){
+        fread(&registroAux,sizeof(Journal),1,fp);
+        if(registroAux.journal_type != 0 && registroAux.journal_type != 1)
+            ultimo = true;
+    }
+    fseek(fp,ftell(fp)- static_cast<int>(sizeof(Journal)),SEEK_SET);
+    fwrite(&registro,sizeof(Journal),1,fp);
+    fclose(fp);
+}
+
+int nuevaCarpeta(FILE *stream, char fit, bool BanderaPR, char *path, int index){
+    SuperBloque super;
+    InodoTable inodo,inodoNuevo;
+    BloqueCarpeta carpeta, carpetaNueva, carpetaAux;
+    BloqueApuntadores apuntadores;
+    QList<string> lista = QList<string>();
+    char copiaPath[500];
+    char directorio[500];
+    char nombreCarpeta[80];
+    strcpy(copiaPath,path);
+    strcpy(directorio,dirname(copiaPath));
+    strcpy(copiaPath,path);
+    strcpy(nombreCarpeta,basename(copiaPath));
+    char *token = strtok(path,"/");
+    int cont = 0;
+    int numInodo = index;
+    int response = 0;
+    while(token != nullptr){
+        cont++;
+        lista.append(token);
+        token = strtok(nullptr,"/");
+    }
+    fseek(stream,currentSession.inicioSuper,SEEK_SET);
+    fread(&super,sizeof(SuperBloque),1,stream);
+    if(cont == 1){
+        int content = 0;
+        int bloque = 0;
+        int pointer = 0;
+        int libre = buscarContentenido(stream,numInodo,inodo,carpeta,apuntadores,content,bloque,pointer);
+        if(libre == 1){
+            if(bloque == 12){
+                bool permissions = permisosDeEscritura(inodo.i_perm,(inodo.i_uid == currentSession.id_user),(inodo.i_gid == currentSession.id_grp));
+                if(permissions || (currentSession.id_user == 1 && currentSession.id_grp == 1) ){
+                    char buffer = '1';
+                    int bitInodo = buscarBit(stream,'I',fit);
+                    carpeta.b_content[content].b_inodo = bitInodo;
+                    strcpy(carpeta.b_content[content].b_name,nombreCarpeta);
+                    fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*apuntadores.b_pointer[pointer],SEEK_SET);
+                    fwrite(&carpeta,sizeof(BloqueCarpeta),1,stream);
+                    inodoNuevo = crearInodo(0,'0',664);
+                    int bitBloque = buscarBit(stream,'B',fit);
+                    inodoNuevo.i_block[0] = bitBloque;
+                    fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*bitInodo,SEEK_SET);
+                    fwrite(&inodoNuevo,sizeof(InodoTable),1,stream);
+                    fseek(stream,super.s_bm_inode_start + bitInodo,SEEK_SET);
+                    fwrite(&buffer,sizeof(char),1,stream);
+                    carpetaNueva = crearBloqueCarpeta();
+                    carpetaNueva.b_content[0].b_inodo = bitInodo;
+                    carpetaNueva.b_content[1].b_inodo = numInodo;
+                    strcpy(carpetaNueva.b_content[0].b_name,".");
+                    strcpy(carpetaNueva.b_content[1].b_name,"..");
+                    fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*bitBloque,SEEK_SET);
+                    fwrite(&carpetaNueva,sizeof(BloqueCarpeta),1,stream);
+                    fseek(stream,super.s_bm_block_start + bitBloque,SEEK_SET);
+                    fwrite(&buffer,sizeof(char),1,stream);
+                    super.s_free_inodes_count = super.s_free_inodes_count - 1;
+                    super.s_free_blocks_count = super.s_free_blocks_count - 1;
+                    super.s_first_ino = super.s_first_ino + 1;
+                    super.s_first_blo = super.s_first_blo + 1;
+                    fseek(stream,currentSession.inicioSuper,SEEK_SET);
+                    fwrite(&super,sizeof(SuperBloque),1,stream);
+                    return 1;
+                }else
+                    return 2;
+            }else if(bloque == 13){
+
+            }else if(bloque == 14){
+
+            }else{
+                bool permisos = permisosDeEscritura(inodo.i_perm,(inodo.i_uid == currentSession.id_user),(inodo.i_gid == currentSession.id_grp));
+                if(permisos || (currentSession.id_user == 1 && currentSession.id_grp == 1) ){
+                    char buffer = '1';
+                    int bitInodo = buscarBit(stream,'I',fit);
+                    carpeta.b_content[content].b_inodo = bitInodo;
+                    strcpy(carpeta.b_content[content].b_name,nombreCarpeta);
+                    fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*inodo.i_block[bloque],SEEK_SET);
+                    fwrite(&carpeta,sizeof(BloqueCarpeta),1,stream);
+                    inodoNuevo = crearInodo(0,'0',664);
+                    int bitBloque = buscarBit(stream,'B',fit);
+                    inodoNuevo.i_block[0] = bitBloque;
+                    fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*bitInodo,SEEK_SET);
+                    fwrite(&inodoNuevo,sizeof(InodoTable),1,stream);
+                    carpetaNueva = crearBloqueCarpeta();
+                    carpetaNueva.b_content[0].b_inodo = bitInodo;
+                    carpetaNueva.b_content[1].b_inodo = numInodo;
+                    strcpy(carpetaNueva.b_content[0].b_name,".");
+                    strcpy(carpetaNueva.b_content[1].b_name,"..");
+                    fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*bitBloque,SEEK_SET);
+                    fwrite(&carpetaNueva,sizeof(BloqueCarpeta),1,stream);
+                    fseek(stream,super.s_bm_inode_start + bitInodo,SEEK_SET);
+                    fwrite(&buffer,sizeof(char),1,stream);
+                    fseek(stream,super.s_bm_block_start + bitBloque,SEEK_SET);
+                    fwrite(&buffer,sizeof(char),1,stream);
+                    super.s_free_inodes_count = super.s_free_inodes_count - 1;
+                    super.s_free_blocks_count = super.s_free_blocks_count - 1;
+                    super.s_first_ino = super.s_first_ino + 1;
+                    super.s_first_blo = super.s_first_blo + 1;
+                    fseek(stream,currentSession.inicioSuper,SEEK_SET);
+                    fwrite(&super,sizeof(SuperBloque),1,stream);
+                    return 1;
+                }else
+                    return 2;
+            }
+        }else if(libre == 0){
+            bool flag = false;
+            pointer = -1;
+            fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*numInodo,SEEK_SET);
+            fread(&inodo,sizeof(InodoTable),1,stream);
+            for (int i = 0; i < 15; i++) {
+                if(i == 12){
+                    if(inodo.i_block[i] == -1){
+                        bloque = 12;
+                        flag = true;
+                        break;
+                    }else{
+                        fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueApuntadores))*inodo.i_block[12],SEEK_SET);
+                        fread(&apuntadores,sizeof(BloqueApuntadores),1,stream);
+                        for(int j = 0; j < 16; j++){
+                            if(apuntadores.b_pointer[j] == -1){
+                                bloque = 12;
+                                pointer = j;
+                                break;
+                            }
+                        }
+                    }
+                    if(flag || pointer!= -1)
+                        break;
+                }else if(i == 13){
+
+                }else if(i == 14){
+
+                }else{
+                    if(inodo.i_block[i] == -1){
+                        bloque = i;
+                        break;
+                    }
+                }
+            }
+
+            if(bloque == 12 && flag){
+                bool permissions = permisosDeEscritura(inodo.i_perm,(inodo.i_uid == currentSession.id_user),(inodo.i_gid == currentSession.id_grp));
+                if(permissions || (currentSession.id_user == 1 && currentSession.id_grp == 1) ){
+                    char buffer = '1';
+                    char buffer3 = '3';
+                    int bitBloque = buscarBit(stream,'B',fit);
+                    inodo.i_block[bloque] = bitBloque;
+                    fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*numInodo,SEEK_SET);
+                    fwrite(&inodo,sizeof(InodoTable),1,stream);
+                    fseek(stream,super.s_bm_block_start + bitBloque,SEEK_SET);
+                    fwrite(&buffer3,sizeof(char),1,stream);
+                    int bitBloqueCarpeta = buscarBit(stream,'B',fit);
+                    apuntadores.b_pointer[0] = bitBloqueCarpeta;
+                    for(int i = 1; i < 16; i++)
+                        apuntadores.b_pointer[i] = -1;
+                    fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueApuntadores))*bitBloque,SEEK_SET);
+                    fwrite(&apuntadores,sizeof(BloqueApuntadores),1,stream);
+                    int bitInodo = buscarBit(stream,'I',fit);
+                    carpetaAux = crearBloqueCarpeta();
+                    carpetaAux.b_content[0].b_inodo = bitInodo;
+                    strcpy(carpetaAux.b_content[0].b_name,nombreCarpeta);
+                    fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*bitBloqueCarpeta,SEEK_SET);
+                    fwrite(&carpetaAux,sizeof(BloqueCarpeta),1,stream);
+                    fseek(stream,super.s_bm_block_start + bitBloqueCarpeta,SEEK_SET);
+                    fwrite(&buffer,sizeof(char),1,stream);
+                    inodoNuevo = crearInodo(0,'0',664);
+                    bitBloque = buscarBit(stream,'B',fit);
+                    inodoNuevo.i_block[0] = bitBloque;
+                    fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*bitInodo,SEEK_SET);
+                    fwrite(&inodoNuevo,sizeof(InodoTable),1,stream);
+                    fseek(stream,super.s_bm_inode_start + bitInodo,SEEK_SET);
+                    fwrite(&buffer,sizeof(char),1,stream);
+                    carpetaNueva = crearBloqueCarpeta();
+                    carpetaNueva.b_content[0].b_inodo = bitInodo;
+                    carpetaNueva.b_content[1].b_inodo = numInodo;
+                    strcpy(carpetaNueva.b_content[0].b_name,".");
+                    strcpy(carpetaNueva.b_content[1].b_name,"..");
+                    fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*bitBloque,SEEK_SET);
+                    fwrite(&carpetaNueva,sizeof(BloqueCarpeta),1,stream);
+                    fseek(stream,super.s_bm_block_start + bitBloque,SEEK_SET);
+                    fwrite(&buffer,sizeof(char),1,stream);
+                    super.s_free_inodes_count = super.s_free_inodes_count - 1;
+                    super.s_free_blocks_count = super.s_free_blocks_count - 3;
+                    super.s_first_ino = super.s_first_ino + 1;
+                    super.s_first_blo = super.s_first_blo + 3;
+                    fseek(stream,currentSession.inicioSuper,SEEK_SET);
+                    fwrite(&super,sizeof(SuperBloque),1,stream);
+                    return 1;
+                }else
+                    return 2;
+            }else if(bloque == 12 && !flag){
+                char buffer = '1';
+                int bitBloque = buscarBit(stream,'B',fit);
+                apuntadores.b_pointer[pointer] = bitBloque;
+                fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueApuntadores))*inodo.i_block[12],SEEK_SET);
+                fwrite(&apuntadores,sizeof(BloqueApuntadores),1,stream);
+                int bitInodo = buscarBit(stream,'I',fit);
+                carpetaAux = crearBloqueCarpeta();
+                carpetaAux.b_content[0].b_inodo = bitInodo;
+                strcpy(carpetaAux.b_content[0].b_name,nombreCarpeta);
+                fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*bitBloque,SEEK_SET);
+                fwrite(&carpetaAux,sizeof(BloqueCarpeta),1,stream);
+                fseek(stream,super.s_bm_block_start + bitBloque,SEEK_SET);
+                fwrite(&buffer,sizeof(char),1,stream);
+                inodoNuevo = crearInodo(0,'0',664);
+                inodoNuevo.i_uid = currentSession.id_user;
+                inodoNuevo.i_gid = currentSession.id_grp;
+                bitBloque = buscarBit(stream,'B',fit);
+                inodoNuevo.i_block[0] = bitBloque;
+                fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*bitInodo,SEEK_SET);
+                fwrite(&inodoNuevo,sizeof(InodoTable),1,stream);
+                fseek(stream,super.s_bm_inode_start + bitInodo,SEEK_SET);
+                fwrite(&buffer,sizeof(char),1,stream);
+                carpetaNueva = crearBloqueCarpeta();
+                carpetaNueva.b_content[0].b_inodo = bitInodo;
+                carpetaNueva.b_content[1].b_inodo = numInodo;
+                strcpy(carpetaNueva.b_content[0].b_name,".");
+                strcpy(carpetaNueva.b_content[1].b_name,"..");
+                fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*bitBloque,SEEK_SET);
+                fwrite(&carpetaNueva,sizeof(BloqueCarpeta),1,stream);
+                fseek(stream,super.s_bm_block_start + bitBloque,SEEK_SET);
+                fwrite(&buffer,sizeof(char),1,stream);
+                super.s_free_inodes_count = super.s_free_inodes_count - 1;
+                super.s_free_blocks_count = super.s_free_blocks_count - 2;
+                super.s_first_ino = super.s_first_ino + 1;
+                super.s_first_blo = super.s_first_blo + 2;
+                fseek(stream,currentSession.inicioSuper,SEEK_SET);
+                fwrite(&super,sizeof(SuperBloque),1,stream);
+                return 1;
+            }
+            else if(bloque == 13){
+
+            }else if(bloque == 14){
+
+            }else{
+                bool permissions = permisosDeEscritura(inodo.i_perm,(inodo.i_uid == currentSession.id_user),(inodo.i_gid == currentSession.id_grp));
+                if(permissions || (currentSession.id_user == 1 && currentSession.id_grp == 1) ){
+                    char buffer = '1';
+                    int bitBloque = buscarBit(stream,'B',fit);
+                    inodo.i_block[bloque] = bitBloque;
+                    fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*numInodo,SEEK_SET);
+                    fwrite(&inodo,sizeof(InodoTable),1,stream);
+                    int bitInodo = buscarBit(stream,'I',fit);
+                    carpetaAux = crearBloqueCarpeta();
+                    carpetaAux.b_content[0].b_inodo = bitInodo;
+                    strcpy(carpetaAux.b_content[0].b_name,nombreCarpeta);
+                    fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*bitBloque,SEEK_SET);
+                    fwrite(&carpetaAux,sizeof(BloqueCarpeta),1,stream);
+                    fseek(stream,super.s_bm_block_start + bitBloque,SEEK_SET);
+                    fwrite(&buffer,sizeof(char),1,stream);
+                    inodoNuevo = crearInodo(0,'0',664);
+                    bitBloque = buscarBit(stream,'B',fit);
+                    inodoNuevo.i_block[0] = bitBloque;
+                    fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*bitInodo,SEEK_SET);
+                    fwrite(&inodoNuevo,sizeof(InodoTable),1,stream);
+                    fseek(stream,super.s_bm_inode_start + bitInodo,SEEK_SET);
+                    fwrite(&buffer,sizeof(char),1,stream);
+                    carpetaNueva = crearBloqueCarpeta();
+                    carpetaNueva.b_content[0].b_inodo = bitInodo;
+                    carpetaNueva.b_content[1].b_inodo = numInodo;
+                    strcpy(carpetaNueva.b_content[0].b_name,".");
+                    strcpy(carpetaNueva.b_content[1].b_name,"..");
+                    fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*bitBloque,SEEK_SET);
+                    fwrite(&carpetaNueva,sizeof(BloqueCarpeta),1,stream);
+                    fseek(stream,super.s_bm_block_start + bitBloque,SEEK_SET);
+                    fwrite(&buffer,sizeof(char),1,stream);
+                    super.s_free_inodes_count = super.s_free_inodes_count - 1;
+                    super.s_free_blocks_count = super.s_free_blocks_count - 2;
+                    super.s_first_ino = super.s_first_ino + 1;
+                    super.s_first_blo = super.s_first_blo + 2;
+                    fseek(stream,currentSession.inicioSuper,SEEK_SET);
+                    fwrite(&super,sizeof(SuperBloque),1,stream);
+                    return 1;
+                }else
+                    return 2;
+            }
+
+        }
+    }else{
+        int existe = buscarCarpetaArchivo(stream,directorio);
+        if(existe == -1){
+            if(BanderaPR){
+                int index = 0;
+                string aux = "";
+                for(int i = 0; i < cont; i++){
+                    aux += "/"+lista.at(i);
+                    char dir[500];
+                    char auxDir[500];
+                    strcpy(dir,aux.c_str());
+                    strcpy(auxDir,aux.c_str());
+                    int carpeta = buscarCarpetaArchivo(stream,dir);
+                    if(carpeta == -1){
+                        response = nuevaCarpeta(stream,fit,false,auxDir,index);
+                        if(response == 2)
+                            break;
+                        strcpy(auxDir,aux.c_str());
+                        index = buscarCarpetaArchivo(stream,auxDir);
+                    }else
+                        index = carpeta;
+                }
+            }else
+                return 3;
+        }else{
+            char dir[100] = "/";
+            strcat(dir,nombreCarpeta);
+            return nuevaCarpeta(stream,fit,false,dir,existe);
+        }
+    }
+
+    return response;
+}
+
+int nuevoArchivo(FILE *stream, char fit, bool BanderaPR, char *path, int size, QString contenido, int index,char *auxPath){
+    SuperBloque super;
+    InodoTable inodo,inodoNuevo;
+    BloqueCarpeta carpeta, carpetaNueva;
+    BloqueApuntadores apuntadores;
+    QList<string> lista = QList<string>();
+    char copiaPath[500];
+    char directorio[500];
+    char nombreCarpeta[80];
+    string content = "";
+    string contentSize = "0123456789";
+    strcpy(copiaPath,path);
+    strcpy(directorio,dirname(copiaPath));
+    strcpy(copiaPath,path);
+    strcpy(nombreCarpeta,basename(copiaPath));
+    strcpy(copiaPath,path);
+    char *token = strtok(path,"/");
+    int cont = 0;
+    int numInodo = index;
+    int finalSize = size;
+    while(token != nullptr){
+        cont++;
+        lista.append(token);
+        token = strtok(nullptr,"/");
+    }
+    if(contenido.length() != 0){
+        FILE *archivoCont;
+        if((archivoCont = fopen(contenido.toStdString().c_str(),"r"))){
+            fseek(archivoCont,0,SEEK_END);
+            finalSize = static_cast<int>(ftell(archivoCont));
+            fseek(archivoCont,0,SEEK_SET);
+            for (int i = 0; i < finalSize; i++)
+                content += static_cast<char>(fgetc(archivoCont));
+        }else
+            return 3;
+    }
+    fseek(stream,currentSession.inicioSuper,SEEK_SET);
+    fread(&super,sizeof(SuperBloque),1,stream);
+    if(cont == 1){
+        int bloque = 0;
+        int pointer = 0;
+        int b_content = 0;
+        int libre = buscarContentenido(stream,numInodo,inodo,carpeta,apuntadores,b_content,bloque,pointer);
+        if(libre == 1){
+            bool permisos = permisosDeEscritura(inodo.i_perm,(inodo.i_uid == currentSession.id_user),(inodo.i_gid == currentSession.id_grp));
+            if(permisos || (currentSession.id_user == 1 && currentSession.id_grp == 1)){
+                char buffer = '1';
+                char buffer2 = '2';
+                char buffer3 = '3';
+                int bitInodo = buscarBit(stream,'I',fit);
+                carpeta.b_content[b_content].b_inodo = bitInodo;
+                strcpy(carpeta.b_content[b_content].b_name,nombreCarpeta);
+                fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*inodo.i_block[bloque],SEEK_SET);
+                fwrite(&carpeta,sizeof(BloqueCarpeta),1,stream);
+                inodoNuevo = crearInodo(0,'1',664);
+                fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*bitInodo,SEEK_SET);
+                fwrite(&inodoNuevo,sizeof(InodoTable),1,stream);
+                fseek(stream,super.s_bm_inode_start + bitInodo,SEEK_SET);
+                fwrite(&buffer,sizeof(char),1,stream);
+                if(finalSize != 0){
+                    double n = static_cast<double>(finalSize)/static_cast<double>(63);
+                    int numBloques = static_cast<int>(ceil(n));
+                    int caracteres = finalSize;
+                    size_t charNum = 0;
+                    size_t contChar = 0;
+                    numInodo = buscarCarpetaArchivo(stream,auxPath);
+                    for (int i = 0; i < numBloques; i++) {
+                        BloqueArchivo archivo;
+                        memset(archivo.b_content,0,sizeof(archivo.b_content));
+                        if(i == 12){
+                            int bitBloqueA = buscarBit(stream,'B',fit);
+                            fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*numInodo,SEEK_SET);
+                            fread(&inodo,sizeof(InodoTable),1,stream);
+                            inodo.i_block[i] = bitBloqueA;
+                            fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*numInodo,SEEK_SET);
+                            fwrite(&inodo,sizeof(InodoTable),1,stream);
+                            fseek(stream,super.s_bm_block_start + bitBloqueA,SEEK_SET);
+                            fwrite(&buffer3,sizeof(char),1,stream);
+                            int bitBloque = buscarBit(stream,'B',fit);
+                            apuntadores.b_pointer[0] = bitBloque;
+                            for(int i = 1; i < 16; i++)
+                                apuntadores.b_pointer[i] = -1;
+                            fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueApuntadores))*bitBloqueA,SEEK_SET);
+                            fwrite(&apuntadores,sizeof(BloqueApuntadores),1,stream);
+                            fseek(stream,super.s_bm_block_start + bitBloque,SEEK_SET);
+                            fwrite(&buffer2,sizeof(char),1,stream);
+                            if(caracteres > 63){
+                                for(int j = 0; j < 63; j++){
+                                    if(content.length() != 0){
+                                        archivo.b_content[j] = content[contChar];
+                                        contChar++;
+                                    }else{
+                                        archivo.b_content[j] = contentSize[charNum];
+                                        charNum++;
+                                        if(charNum == 10)
+                                            charNum = 0;
+                                    }
+                                }
+                                fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueArchivo))*bitBloque,SEEK_SET);
+                                fwrite(&archivo,sizeof(BloqueArchivo),1,stream);
+                                caracteres -= 63;
+                            }else{
+                                for (int j = 0; j < caracteres; j++) {
+                                    if(content.length() != 0){
+                                        archivo.b_content[j] = content[contChar];
+                                        contChar++;
+                                    }else{
+                                        archivo.b_content[j] = contentSize[charNum];
+                                        charNum++;
+                                        if(charNum == 10)
+                                            charNum = 0;
+                                    }
+                                }
+                                fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueArchivo))*bitBloque,SEEK_SET);
+                                fwrite(&archivo,sizeof(BloqueArchivo),1,stream);
+                            }
+                        }else if(i > 12 && i < 28){
+                            int libre = 0;
+                            fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*numInodo,SEEK_SET);
+                            fread(&inodo,sizeof(InodoTable),1,stream);
+                            fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueApuntadores))*inodo.i_block[12],SEEK_SET);
+                            fread(&apuntadores,sizeof(BloqueApuntadores),1,stream);
+                            for (int a = 0; a < 16; a++) {
+                                if(apuntadores.b_pointer[a] == -1){
+                                    libre = a;
+                                    break;
+                                }
+                            }
+                            int bitBloque = buscarBit(stream,'B',fit);
+                            apuntadores.b_pointer[libre] = bitBloque;
+                            fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueApuntadores))*inodo.i_block[12],SEEK_SET);
+                            fwrite(&apuntadores,sizeof(BloqueApuntadores),1,stream);
+                            fseek(stream,super.s_bm_block_start + bitBloque,SEEK_SET);
+                            fwrite(&buffer2,sizeof(char),1,stream);
+                            if(caracteres > 63){
+                                for(int j = 0; j < 63; j++){
+                                    if(content.length() != 0){
+                                        archivo.b_content[j] = content[contChar];
+                                        contChar++;
+                                    }else{//-size
+                                        archivo.b_content[j] = contentSize[charNum];
+                                        charNum++;
+                                        if(charNum == 10)
+                                            charNum = 0;
+                                    }
+                                }
+                                fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueArchivo))*bitBloque,SEEK_SET);
+                                fwrite(&archivo,sizeof(BloqueArchivo),1,stream);
+                                caracteres -= 63;
+                            }else{
+                                for (int j = 0; j < caracteres; j++) {
+                                    if(content.length() != 0){
+                                        archivo.b_content[j] = content[contChar];
+                                        contChar++;
+                                    }else{
+                                        archivo.b_content[j] = contentSize[charNum];
+                                        charNum++;
+                                        if(charNum == 10)
+                                            charNum = 0;
+                                    }
+                                }
+                                fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueArchivo))*bitBloque,SEEK_SET);
+                                fwrite(&archivo,sizeof(BloqueArchivo),1,stream);
+                            }
+                        }else if(i == 29){
+
+                        }else{
+                            int bitBloque = buscarBit(stream,'B',fit);
+                            fseek(stream,super.s_bm_block_start + bitBloque,SEEK_SET);
+                            fwrite(&buffer2,sizeof(char),1,stream);
+                            if(caracteres > 63){
+                                for(int j = 0; j < 63; j++){
+                                    if(content.length() != 0){
+                                        archivo.b_content[j] = content[contChar];
+                                        contChar++;
+                                    }else{//-size
+                                        archivo.b_content[j] = contentSize[charNum];
+                                        charNum++;
+                                        if(charNum == 10)
+                                            charNum = 0;
+                                    }
+                                }
+                                fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*numInodo,SEEK_SET);
+                                fread(&inodo,sizeof(InodoTable),1,stream);
+                                inodo.i_block[i] = bitBloque;
+                                inodo.i_size = finalSize;
+                                fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*numInodo,SEEK_SET);
+                                fwrite(&inodo,sizeof(InodoTable),1,stream);
+                                fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueArchivo))*bitBloque,SEEK_SET);
+                                fwrite(&archivo,sizeof(BloqueArchivo),1,stream);
+                                caracteres -= 63;
+                            }else{
+                                for (int j = 0; j < caracteres; j++) {
+                                    if(content.length() != 0){
+                                        archivo.b_content[j] = content[contChar];
+                                        contChar++;
+                                    }else{
+                                        archivo.b_content[j] = contentSize[charNum];
+                                        charNum++;
+                                        if(charNum == 10)
+                                            charNum = 0;
+                                    }
+                                }
+                                fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*numInodo,SEEK_SET);
+                                fread(&inodo,sizeof(InodoTable),1,stream);
+                                inodo.i_block[i] = bitBloque;
+                                inodo.i_size = finalSize;
+                                fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*numInodo,SEEK_SET);
+                                fwrite(&inodo,sizeof(InodoTable),1,stream);
+                                fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueArchivo))*bitBloque,SEEK_SET);
+                                fwrite(&archivo,sizeof(BloqueArchivo),1,stream);
+                            }
+                        }
+                    }
+                    super.s_free_blocks_count = super.s_free_blocks_count - numBloques;
+                    super.s_free_inodes_count = super.s_free_inodes_count - 1;
+                    super.s_first_ino = super.s_first_ino + 1;
+                    super.s_first_blo = super.s_first_blo + numBloques;
+                    fseek(stream,currentSession.inicioSuper,SEEK_SET);
+                    fwrite(&super,sizeof(SuperBloque),1,stream);
+                    return 1;
+                }
+                super.s_free_inodes_count = super.s_free_inodes_count - 1;
+                super.s_first_ino = super.s_first_ino + 1;
+                fseek(stream,currentSession.inicioSuper,SEEK_SET);
+                fwrite(&super,sizeof(SuperBloque),1,stream);
+                return 1;
+            }else
+                return 2;
+        }else{
+            fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*numInodo,SEEK_SET);
+            fread(&inodo,sizeof(InodoTable),1,stream);
+            for (int i = 0; i < 15; i++) {
+                if(inodo.i_block[i] == -1){
+                    bloque = i;
+                    break;
+                }
+            }
+            if(bloque == 12){
+                bool permissions = permisosDeEscritura(inodo.i_perm,(inodo.i_uid == currentSession.id_user),(inodo.i_gid == currentSession.id_grp));
+                if(permissions || (currentSession.id_user == 1 && currentSession.id_grp == 1) ){
+
+                }else
+                    return 2;
+            }else if(bloque == 13){
+
+            }else if(bloque == 14){
+
+            }else{
+                bool permisos = permisosDeEscritura(inodo.i_perm,(inodo.i_uid == currentSession.id_user),(inodo.i_gid == currentSession.id_grp));
+                if(permisos || (currentSession.id_user == 1 && currentSession.id_grp == 1)){
+                    char buffer = '1';
+                    char buffer2 = '2';
+                    char buffer3 = '3';
+                    int bitBloque = buscarBit(stream,'B',fit);
+                    inodo.i_block[bloque] = bitBloque;
+                    fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*numInodo,SEEK_SET);
+                    fwrite(&inodo,sizeof(InodoTable),1,stream);
+                    int bitInodo = buscarBit(stream,'I',fit);
+                    carpetaNueva.b_content[0].b_inodo = bitInodo;
+                    carpetaNueva.b_content[1].b_inodo = -1;
+                    carpetaNueva.b_content[2].b_inodo = -1;
+                    carpetaNueva.b_content[3].b_inodo = -1;
+                    strcpy(carpetaNueva.b_content[0].b_name,nombreCarpeta);
+                    strcpy(carpetaNueva.b_content[1].b_name,"");
+                    strcpy(carpetaNueva.b_content[2].b_name,"");
+                    strcpy(carpetaNueva.b_content[3].b_name,"");
+                    fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*bitBloque,SEEK_SET);
+                    fwrite(&carpetaNueva,sizeof(BloqueCarpeta),1,stream);
+                    fseek(stream,super.s_bm_block_start + bitBloque,SEEK_SET);
+                    fwrite(&buffer,sizeof(char),1,stream);
+                    inodoNuevo = crearInodo(0,'1',664);
+                    fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*bitInodo,SEEK_SET);
+                    fwrite(&inodoNuevo,sizeof(InodoTable),1,stream);
+                    fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*bitInodo,SEEK_SET);
+                    fwrite(&inodoNuevo,sizeof(InodoTable),1,stream);
+                    fseek(stream,super.s_bm_inode_start + bitInodo,SEEK_SET);
+                    fwrite(&buffer,sizeof(char),1,stream);
+                    if(finalSize != 0){
+                        double n = static_cast<double>(finalSize)/static_cast<double>(63);
+                        int numBloques = static_cast<int>(ceil(n));
+                        int caracteres = finalSize;
+                        size_t charNum = 0;
+                        size_t contChar = 0;
+                        numInodo = buscarCarpetaArchivo(stream,auxPath);
+                        for (int i = 0; i < numBloques; i++) {
+                            BloqueArchivo archivo;
+                            memset(archivo.b_content,0,sizeof(archivo.b_content));
+                            if(i == 12){
+                                int bitBloqueA = buscarBit(stream,'B',fit);
+                                fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*numInodo,SEEK_SET);
+                                fread(&inodo,sizeof(InodoTable),1,stream);
+                                inodo.i_block[i] = bitBloqueA;
+                                fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*numInodo,SEEK_SET);
+                                fwrite(&inodo,sizeof(InodoTable),1,stream);
+                                fseek(stream,super.s_bm_block_start + bitBloqueA,SEEK_SET);
+                                fwrite(&buffer3,sizeof(char),1,stream);
+                                int bitBloque = buscarBit(stream,'B',fit);
+                                apuntadores.b_pointer[0] = bitBloque;
+                                for(int i = 1; i < 16; i++)
+                                    apuntadores.b_pointer[i] = -1;
+                                fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueApuntadores))*bitBloqueA,SEEK_SET);
+                                fwrite(&apuntadores,sizeof(BloqueApuntadores),1,stream);
+                                fseek(stream,super.s_bm_block_start + bitBloque,SEEK_SET);
+                                fwrite(&buffer2,sizeof(char),1,stream);
+                                if(caracteres > 63){
+                                    for(int j = 0; j < 63; j++){
+                                        if(content.length() != 0){
+                                            archivo.b_content[j] = content[contChar];
+                                            contChar++;
+                                        }else{//-size
+                                            archivo.b_content[j] = contentSize[charNum];
+                                            charNum++;
+                                            if(charNum == 10)
+                                                charNum = 0;
+                                        }
+                                    }
+                                    fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueArchivo))*bitBloque,SEEK_SET);
+                                    fwrite(&archivo,sizeof(BloqueArchivo),1,stream);
+                                    caracteres -= 63;
+                                }else{
+                                    for (int j = 0; j < caracteres; j++) {
+                                        if(content.length() != 0){
+                                            archivo.b_content[j] = content[contChar];
+                                            contChar++;
+                                        }else{
+                                            archivo.b_content[j] = contentSize[charNum];
+                                            charNum++;
+                                            if(charNum == 10)
+                                                charNum = 0;
+                                        }
+                                    }
+                                    fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueArchivo))*bitBloque,SEEK_SET);
+                                    fwrite(&archivo,sizeof(BloqueArchivo),1,stream);
+                                }
+                            }else if(i > 12 && i < 28){
+                                int libre = 0;
+                                fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*numInodo,SEEK_SET);
+                                fread(&inodo,sizeof(InodoTable),1,stream);
+                                fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueApuntadores))*inodo.i_block[12],SEEK_SET);
+                                fread(&apuntadores,sizeof(BloqueApuntadores),1,stream);
+                                for (int a = 0; a < 16; a++) {
+                                    if(apuntadores.b_pointer[a] == -1){
+                                        libre = a;
+                                        break;
+                                    }
+                                }
+                                int bitBloque = buscarBit(stream,'B',fit);
+                                apuntadores.b_pointer[libre] = bitBloque;
+                                fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueApuntadores))*inodo.i_block[12],SEEK_SET);
+                                fwrite(&apuntadores,sizeof(BloqueApuntadores),1,stream);
+                                fseek(stream,super.s_bm_block_start + bitBloque,SEEK_SET);
+                                fwrite(&buffer2,sizeof(char),1,stream);
+                                if(caracteres > 63){
+                                    for(int j = 0; j < 63; j++){
+                                        if(content.length() != 0){
+                                            archivo.b_content[j] = content[contChar];
+                                            contChar++;
+                                        }else{
+                                            archivo.b_content[j] = contentSize[charNum];
+                                            charNum++;
+                                            if(charNum == 10)
+                                                charNum = 0;
+                                        }
+                                    }
+                                    fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueArchivo))*bitBloque,SEEK_SET);
+                                    fwrite(&archivo,sizeof(BloqueArchivo),1,stream);
+                                    caracteres -= 63;
+                                }else{
+                                    for (int j = 0; j < caracteres; j++) {
+                                        if(content.length() != 0){
+                                            archivo.b_content[j] = content[contChar];
+                                            contChar++;
+                                        }else{
+                                            archivo.b_content[j] = contentSize[charNum];
+                                            charNum++;
+                                            if(charNum == 10)
+                                                charNum = 0;
+                                        }
+                                    }
+                                    fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueArchivo))*bitBloque,SEEK_SET);
+                                    fwrite(&archivo,sizeof(BloqueArchivo),1,stream);
+                                }
+
+                            }else if(i == 29){
+
+                            }else{
+                                int bitBloque = buscarBit(stream,'B',fit);
+                                fseek(stream,super.s_bm_block_start + bitBloque,SEEK_SET);
+                                fwrite(&buffer2,sizeof(char),1,stream);
+                                if(caracteres > 63){
+                                    for(int j = 0; j < 63; j++){
+                                        if(content.length() != 0){//-cont
+                                            archivo.b_content[j] = content[contChar];
+                                            contChar++;
+                                        }else{//-size
+                                            archivo.b_content[j] = contentSize[charNum];
+                                            charNum++;
+                                            if(charNum == 10)
+                                                charNum = 0;
+                                        }
+                                    }
+                                    fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*numInodo,SEEK_SET);
+                                    fread(&inodo,sizeof(InodoTable),1,stream);
+                                    inodo.i_block[i] = bitBloque;
+                                    fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*numInodo,SEEK_SET);
+                                    fwrite(&inodo,sizeof(InodoTable),1,stream);
+                                    fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueArchivo))*bitBloque,SEEK_SET);
+                                    fwrite(&archivo,sizeof(BloqueArchivo),1,stream);
+                                    caracteres -= 63;
+                                }else{
+                                    for (int j = 0; j < caracteres; j++) {
+                                        if(content.length() != 0){
+                                            archivo.b_content[j] = content[contChar];
+                                            contChar++;
+                                        }else{
+                                            archivo.b_content[j] = contentSize[charNum];
+                                            charNum++;
+                                            if(charNum == 10)
+                                                charNum = 0;
+                                        }
+                                    }
+                                    fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*numInodo,SEEK_SET);
+                                    fread(&inodo,sizeof(InodoTable),1,stream);
+                                    inodo.i_block[i] = bitBloque;
+                                    fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*numInodo,SEEK_SET);
+                                    fwrite(&inodo,sizeof(InodoTable),1,stream);
+                                    fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueArchivo))*bitBloque,SEEK_SET);
+                                    fwrite(&archivo,sizeof(BloqueArchivo),1,stream);
+                                }
+                            }
+                        }
+                        super.s_free_blocks_count = super.s_free_blocks_count - numBloques;
+                        super.s_free_inodes_count = super.s_free_inodes_count - 1;
+                        super.s_first_ino = super.s_first_ino + 1;
+                        super.s_first_blo = super.s_first_blo + numBloques;
+                        fseek(stream,currentSession.inicioSuper,SEEK_SET);
+                        fwrite(&super,sizeof(SuperBloque),1,stream);
+                        return 1;
+                    }
+                    super.s_free_inodes_count = super.s_free_inodes_count - 1;
+                    super.s_first_ino = super.s_first_ino + 1;
+                    fseek(stream,currentSession.inicioSuper,SEEK_SET);
+                    fwrite(&super,sizeof(SuperBloque),1,stream);
+                    return 1;
+                }else
+                    return 2;
+            }
+        }
+    }else{
+        int existe = buscarCarpetaArchivo(stream,directorio);
+        if(existe == -1){
+            if(BanderaPR){
+                int index = 0;
+                string aux = "";
+                for (int i = 0; i < cont; i++) {
+                    if(i == cont -1){
+                        char dir[100] = "/";
+                        strcat(dir,nombreCarpeta);
+                        return nuevoArchivo(stream,fit,false,dir,size,contenido,index,auxPath);
+                    }else{
+                        aux += "/"+lista.at(i);
+                        char dir[500];
+                        char auxDir[500];
+                        strcpy(dir,aux.c_str());
+                        strcpy(auxDir,aux.c_str());
+                        int carpeta = buscarCarpetaArchivo(stream,dir);
+                        if(carpeta == -1){
+                            nuevaCarpeta(stream,fit,false,auxDir,index);
+                            strcpy(auxDir,aux.c_str());
+                            index = buscarCarpetaArchivo(stream,auxDir);
+                        }else
+                            index = carpeta;
+                    }
+                }
+            }else
+                return 4;
+        }else{
+            char dir[100] = "/";
+            strcat(dir,nombreCarpeta);
+            return nuevoArchivo(stream,fit,false,dir,size,contenido,existe,auxPath);
+        }
+    }
+
+    return 0;
+}
+
+void bloqueCarpetaArchivo(FILE *stream, char* path, int &block, int &posicion,int &pointer,int &posPointer){
+    SuperBloque super;
+    InodoTable inodo;
+    BloqueCarpeta carpeta;
+    BloqueApuntadores apuntador;
+    QList<string> lista = QList<string>();
+    char *token = strtok(path,"/");
+    int cont = 0;
+    int numInodo = 0;
+    while(token != nullptr){
+        lista.append(token);
+        cont++;
+        token = strtok(nullptr,"/");
+    }
+    fseek(stream,currentSession.inicioSuper,SEEK_SET);
+    fread(&super,sizeof(SuperBloque),1,stream);
+    numInodo = super.s_inode_start;
+
+    for (int cont2 = 0; cont2 < cont; cont2++) {
+        fseek(stream,numInodo,SEEK_SET);
+        fread(&inodo,sizeof(InodoTable),1,stream);
+        int siguiente = 0;
+        for(int i = 0; i < 12; i++){
+            if(inodo.i_block[i] != -1){
+                int byteBloque = byteInodoBloque(stream,inodo.i_block[i],'2');
+                fseek(stream,byteBloque,SEEK_SET);
+                if(i < 12){
+                    fread(&carpeta,sizeof(BloqueCarpeta),1,stream);
+                    for (int j = 0; j < 4; j++) {
+                        if((cont2 == cont - 1) && (strcasecmp(carpeta.b_content[j].b_name,lista.at(cont2).c_str()) == 0)){//Tendria que ser la carpeta
+                            block = inodo.i_block[i];
+                            posicion = j;
+                        }else if((cont2 != cont - 1) && (strcasecmp(carpeta.b_content[j].b_name,lista.at(cont2).c_str()) == 0)){
+                            numInodo = byteInodoBloque(stream,carpeta.b_content[j].b_inodo,'1');
+                            siguiente = 1;
+                            break;
+                        }
+                    }
+                }else if(i == 12){
+                    fread(&apuntador,sizeof(BloqueApuntadores),1,stream);
+                    for(int j = 0; j < 16; j++){
+                        if(apuntador.b_pointer[j] != -1){
+                            byteBloque = byteInodoBloque(stream,apuntador.b_pointer[j],'2');
+                            fseek(stream,byteBloque,SEEK_SET);
+                            fread(&carpeta,sizeof(BloqueCarpeta),1,stream);
+                            for (int k = 0; k < 4; k++) {
+                                if((cont2 == cont - 1) && (strcasecmp(carpeta.b_content[k].b_name,lista.at(cont2).c_str()) == 0)){//Tendria que ser la carpeta
+                                    pointer = inodo.i_block[i];
+                                    posPointer = j;
+                                    block = apuntador.b_pointer[j];
+                                    posicion = k;
+                                }else if((cont2 != cont - 1) && (strcasecmp(carpeta.b_content[k].b_name,lista.at(cont2).c_str()) == 0)){
+                                    numInodo = byteInodoBloque(stream,carpeta.b_content[k].b_inodo,'1');
+                                    siguiente = 1;
+                                    break;
+                                }
+                            }
+                            if(siguiente == 1)
+                                break;
+                        }
+                    }
+                }
+                if(siguiente == 1)
+                    break;
+            }
+        }
+    }
+}
+
+int crearArchivo(QString path, bool p, int size, QString cont){
+    FILE *fp = fopen(currentSession.direccion.toStdString().c_str(),"rb+");
+    SuperBloque super;
+    fseek(fp,currentSession.inicioSuper,SEEK_SET);
+    fread(&super,sizeof(SuperBloque),1,fp);
+    char auxPath[500];
+    char auxPath2[500];
+    strcpy(auxPath,path.toStdString().c_str());
+    strcpy(auxPath2,path.toStdString().c_str());
+    int existe = buscarCarpetaArchivo(fp,auxPath);
+    strcpy(auxPath,path.toStdString().c_str());
+    int response = -1;
+    if(existe != -1)
+        response = 0;
+    else
+        response = nuevoArchivo(fp,currentSession.fit,p,auxPath,size,cont,0,auxPath2);
+
+    fclose(fp);
+    return response;
+}
+
+void RREM(Nodo *raiz){
+
+}
+
+void RCAT(Nodo *raiz){
+   QString path = raiz->hijos.at(0).valor;
+   path = path.replace("\"","");
+   char auxPath[500];
+   strcpy(auxPath,path.toStdString().c_str());
+   if(Bandera_login){
+       FILE *fp = fopen(currentSession.direccion.toStdString().c_str(),"rb+");
+       int carpeta = buscarCarpetaArchivo(fp,auxPath);
+       if(carpeta != -1){
+           SuperBloque super;
+           InodoTable inodo;
+           string cadena = "";
+           fseek(fp,currentSession.inicioSuper,SEEK_SET);
+           fread(&super,sizeof(SuperBloque),1,fp);
+           fseek(fp,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*carpeta,SEEK_SET);
+           fread(&inodo,sizeof(InodoTable),1,fp);
+           bool permisos = permisosDeLectura(inodo.i_perm,(inodo.i_uid == currentSession.id_user),(inodo.i_gid == currentSession.id_grp));
+           if(permisos || (currentSession.id_user == 1 && currentSession.id_grp == 1)){
+               for (int i = 0; i < 15; i++) {
+                   if(inodo.i_block[i] != -1){
+                       if(i < 12){
+                           BloqueArchivo archivo;
+                           fseek(fp,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*inodo.i_block[i],SEEK_SET);
+                           fread(&archivo,sizeof(BloqueCarpeta),1,fp);
+                           cadena += archivo.b_content;
+                       }else if(i == 12){
+                            BloqueApuntadores apuntador;
+                            fseek(fp,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*inodo.i_block[i],SEEK_SET);
+                            fread(&apuntador,sizeof(BloqueApuntadores),1,fp);
+                            for(int j = 0; j < 16; j++){
+                                if(apuntador.b_pointer[j] != -1){
+                                    BloqueArchivo archivo;
+                                    fseek(fp,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*apuntador.b_pointer[j],SEEK_SET);
+                                    fread(&archivo,sizeof(BloqueArchivo),1,fp);
+                                    cadena += archivo.b_content;
+                                }
+                            }
+                       }
+                   }
+               }
+               cout << cadena << endl;
+           }else
+               cout << "ERROR el usuario no tiene permisos de lectura" << endl;
+       }else
+           cout << "ERROR no se encuentra el archivo " << path.toStdString() << endl;
+       fclose(fp);
+   }else
+       cout << "ERROR para ejecutar este comando necesita iniciar sesion" << endl;
+}
+
+void RMKFILE(Nodo *raiz){
+    bool BanderaPath = false;
+    bool BanderaR = false;
+    bool BanderaSize = false;
+    bool BanderaCont = false;
+    bool Bandera = false;
+    QString valPath = "";
+    QString valCont = "";
+    int valSize = 0;
+
+    for(int i = 0; i < raiz->hijos.count(); i++){
+        Nodo n = raiz->hijos.at(i);
+        switch (n.tipo_) {
+        case PATH:
+        {
+            if(BanderaPath){
+                cout << "ERROR parametro -path ya definido"<< endl;
+                Bandera = true;
+                break;
+            }
+            BanderaPath = true;
+            valPath = n.valor;
+            valPath = valPath.replace("\"","");
+        }
+            break;
+        case R:
+        {
+            if(BanderaR){
+                cout << "ERROR parametro -p ya definido "<< endl;
+                Bandera = true;
+                break;
+            }
+            BanderaR = true;
+        }
+            break;
+        case SIZE:
+        {
+            if(BanderaSize){
+                cout << "ERROR parametro -size ya definido" << endl;
+                Bandera = true;
+                break;
+            }
+            BanderaSize = true;
+            valSize = n.valor.toInt();
+            if(!(valSize > 0)){
+                cout << "ERROR: parametro -size menor a cero" << endl;
+                Bandera = true;
+                break;
+            }
+        }
+            break;
+        case CONT:
+        {
+            if(BanderaCont){
+                cout << "ERROR parametro -cont ya definido " << endl;
+                Bandera = true;
+                break;
+            }
+            BanderaCont = true;
+            valCont = n.valor;
+            valCont = valCont.replace("\"","");
+        }
+            break;
+        }
+    }
+
+    if(!Bandera){
+        if(BanderaPath){
+            QFileInfo fileName(valPath);
+            QString name = fileName.fileName();
+            if(name.length() <= 11){
+                if(Bandera_login){
+                    int result = crearArchivo(valPath,BanderaR,valSize,valCont);
+                    if(result == 1){
+                        if(currentSession.tipo_sistema == 3){
+                            char aux[500];
+                            char operacion[8];
+                            char content[500];
+                            strcpy(aux,valPath.toStdString().c_str());
+                            strcpy(operacion,"mkfile");
+                            strcpy(content,valCont.toStdString().c_str());
+                            if(valCont.length() != 0)
+                                guardarJournal(operacion,0,664,aux,content);
+                            else{
+                                strcpy(content,to_string(valSize).c_str());
+                                guardarJournal(operacion,0,664,aux,content);
+                            }
+                        }
+                        cout << "Archivo creado con exito" << endl;
+                    }else if(result == 2)
+                        cout << "ERROR el usuario actual no tiene permisos de escritura" << endl;
+                    else if(result == 3)
+                        cout << "ERROR el archivo contenido no existe" << endl;
+                    else if(result == 4)
+                        cout << "ERROR no existe la ruta y no se tiene el parametro -p" << endl;
+                }else
+                    cout << "ERROR necesita iniciar sesion para poder ejecutar este comando" << endl;
+            }else
+                cout << "ERROR el nombre del archivo es mas grande de lo esperado" << endl;
+
+        }else
+            cout << "ERROR parametro -path no definido" << endl;
+    }
+}
+
+void RCHMOD(Nodo *raiz){
+    bool BanderaPath = false;
+    bool BanderaUgo = false;
+    bool BanderaR = false;
+    bool Bandera = false;
+    QString valPath = "";
+    QString valUgo = "";
+    for(int i = 0; i < raiz->hijos.count(); i++){
+        Nodo n = raiz->hijos.at(i);
+        switch (n.tipo_) {
+        case PATH:
+        {
+            if(BanderaPath){
+                cout << "ERROR parametro -path ya definido" << endl;
+                Bandera = true;
+                break;
+            }
+            BanderaPath = true;
+            valPath = n.valor;
+            valPath = valPath.replace("\"","");
+        }
+            break;
+        case UGO:
+        {
+            if(BanderaUgo){
+                cout << "ERRROR parametro -ugo ya definido" << endl;
+                Bandera = true;
+                break;
+            }
+            BanderaUgo = true;
+            valUgo = n.valor;
+        }
+            break;
+        case R:
+        {
+            if(BanderaR){
+                cout << "ERROR parametro -r ya definido" << endl;
+                Bandera = true;
+                break;
+            }
+            BanderaR = true;
+        }
+            break;
+        }
+    }
+
+    if(!Bandera){
+        if(BanderaPath){
+            if(BanderaUgo){
+                if(Bandera_login){
+                    int propietario =valUgo.at(0).unicode() - '0';
+                    int grupo = valUgo.at(1).unicode() - '0';
+                    int otros = valUgo.at(2).unicode() - '0';
+                    if((propietario >= 0 && propietario <= 7) && (grupo >= 0 && grupo <= 7) && (otros >= 0 && otros <= 7)){
+                        char auxPath[500];
+                        strcpy(auxPath,valPath.toStdString().c_str());
+                        FILE *fp = fopen(currentSession.direccion.toStdString().c_str(),"rb+");
+                        SuperBloque super;
+                        InodoTable inodo;
+                        int existe = buscarCarpetaArchivo(fp,auxPath);
+                        fseek(fp,currentSession.inicioSuper,SEEK_SET);
+                        fread(&super,sizeof(SuperBloque),1,fp);
+                        fseek(fp,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*existe,SEEK_SET);
+                        fread(&inodo,sizeof(InodoTable),1,fp);
+                        if(existe != -1){
+                            if((currentSession.id_user ==1 && currentSession.id_grp == 1) || currentSession.id_user == inodo.i_uid){
+                                if(BanderaR)
+                                    cambiarPermisosRecursivo(fp,existe,valUgo.toInt());
+                                else{
+                                    inodo.i_perm = valUgo.toInt();
+                                    fseek(fp,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*existe,SEEK_SET);
+                                    fwrite(&inodo,sizeof(InodoTable),1,fp);
+                                }
+                                cout << "Permisos cambiados exitosamente" << endl;
+                            }else
+                                cout << "ERROR: Para cambiar los permisos debe ser el usuario root o ser dueno de la carpeta/archivo" << endl;
+                        }else
+                            cout << "ERROR: La ruta no existe" << endl;
+                        fclose(fp);
+                    }else
+                        cout << "ERROR: alguno de los digitos se sale del rango predeterminado"<< endl;
+                }else
+                    cout << "ERROR: Se necesita iniciar sesion para poder ejecutar este comando" << endl;
+            }else
+                cout << "ERROR: Parametro -ugo no definido" << endl;
+        }else
+            cout << "ERROR: Parametro -path no definido" << endl;
+    }
+}
+
+void RRMUSR(Nodo *raiz){
+    QString userName = raiz->hijos.at(0).valor;
+    userName = userName.replace("\"","");
+    if(Bandera_login){
+        if(currentSession.id_user == 1 && currentSession.id_grp == 1){
+            if(buscarExisteUsuario(userName)){
+                eliminarUsuario(userName);
+            }else
+                cout << "ERROR el usuario no existe" << endl;
+        }else
+           cout << "ERROR solo el usuario root puede ejecutar este comando" << endl;
+    }else
+        cout << "ERROR necesita iniciar sesion para poder ejecutar este comando" << endl;
+}
+
+void RMKUSR(Nodo *raiz){
+    bool BanderaUser = false;
+    bool BanderaPassword = false;
+    bool BanderaGroup = false;
+    bool Bandera = false;
+    QString user = "";
+    QString pass = "";
+    QString group = "";
+    for(int i = 0; i < raiz->hijos.count(); i++){
+        Nodo n = raiz->hijos.at(i);
+        switch (n.tipo_) {
+        case USER:
+        {
+            if(BanderaUser){
+                cout << "ERROR parametro -usuario ya definido" << endl;
+                Bandera = true;
+                break;
+            }
+            BanderaUser = true;
+            user = n.valor;
+            user = user.replace("\"","");
+        }
+            break;
+        case PASSWORD:
+        {
+            if(BanderaPassword){
+                cout << "ERROR parametro -pwd ya definido" << endl;
+                Bandera = true;
+                break;
+            }
+            BanderaPassword = true;
+            pass = n.valor;
+            pass = pass.replace("\"","");
+        }
+            break;
+        case GROUP:
+        {
+            if(BanderaGroup){
+                cout << "ERROR parametro -grp ya definido" << endl;
+                Bandera = true;
+                break;
+            }
+            BanderaGroup = true;
+            group = n.valor;
+            group = group.replace("\"","");
+        }
+            break;
+        }
+    }
+
+    if(!Bandera){
+        if(BanderaUser){
+            if(BanderaPassword){
+                if(BanderaGroup){
+                    if(user.length() <= 10){
+                        if(pass.length() <= 10){
+                            if(group.length() <= 10){
+                                if(Bandera_login){
+                                    if(currentSession.id_user == 1 && currentSession.id_grp == 1){
+                                        if(buscarExisteGrupo(group) != -1){
+                                            if(!buscarExisteUsuario(user)){
+                                                int id = getID_usr();
+                                                QString datos = QString::number(id) + ",U,"+group+","+user+","+pass+"\n";
+                                                agregarUsersTXT(datos);
+                                                cout << "Usuario creado con exito " << endl;
+                                                if(currentSession.tipo_sistema ==3){
+                                                    char aux[64];
+                                                    char operacion[10];
+                                                    char content[2];
+                                                    strcpy(aux,datos.toStdString().c_str());
+                                                    strcpy(operacion,"mkusr");
+                                                    memset(content,0,2);
+                                                    guardarJournal(operacion,0,0,aux,content);
+                                                }
+                                            }else
+                                                cout << "ERROR el usuario ya existe" <<endl;
+                                        }else
+                                            cout << "ERROR no se encuentra el grupo al que pertenecera el usuario " << endl;
+                                    }else
+                                        cout << "ERROR solo el usuario root puede ejecutar este comando" << endl;
+                                }else
+                                    cout << "ERROR necesita iniciar sesion para poder ejecutar este comando" << endl;
+                            }else
+                                cout << "ERROR grupo del usuario excede de los 10 caracteres permitidos" << endl;
+                        }else
+                            cout << "ERROR contrasena de usuario excede de los 10 caracteres permitidos" << endl;
+                    }else
+                        cout << "ERROR nombre de usuario excede de los 10 caracteres permitidos" << endl;
+                }else
+                    cout << "ERROR parametro -grp no definido" << endl;
+            }else
+                cout << "ERROR parametro -pwd no definido"<< endl;
+        }else
+            cout << "ERROR parametro -usuario no definido " << endl;
+    }
+
+}
+
+void RRMGRP(Nodo *raiz){
+    QString grpName = raiz->hijos.at(0).valor;
+    grpName = grpName.replace("\"","");
+    if(Bandera_login){
+        if(currentSession.id_user == 1 && currentSession.id_grp == 1){
+            int grupo = buscarExisteGrupo(grpName);
+            if(grupo != -1){
+                eliminarGrupo(grpName);
+            }else
+                cout << "ERROR el grupo no existe" << endl;
+        }else
+           cout << "ERROR solo el usuario root puede ejecutar este comando" << endl;
+    }else
+        cout << "ERROR necesita iniciar sesion para poder ejecutar este comando" << endl;
+}
+
+void RMKGRP(Nodo *raiz){
+    QString grpName = raiz->hijos.at(0).valor;
+    grpName = grpName.replace("\"","");
+    if(Bandera_login){
+        if(currentSession.id_user == 1 && currentSession.id_grp == 1){
+            if(grpName.length() <= 10){
+                int grupo = buscarExisteGrupo(grpName);
+                if(grupo == -1){
+                    int idGrp = getID_grp();
+                    QString nuevoGrupo = QString::number(idGrp)+",G,"+grpName+"\n";
+                    agregarUsersTXT(nuevoGrupo);
+                    cout << "Grupo creado con exito "<< endl;
+                    if(currentSession.tipo_sistema ==3){
+                        char aux[64];
+                        char operacion[10];
+                        char content[2];
+                        strcpy(aux,nuevoGrupo.toStdString().c_str());
+                        strcpy(operacion,"mkgrp");
+                        memset(content,0,2);
+                        guardarJournal(operacion,0  ,0,aux,content);
+                    }
+                }else
+                    cout << "ERROR ya existe un grupo con ese nombre" << endl;
+            }else
+                cout << "ERROR el nombre del grupo no puede exceder los 10 caracters" << endl;
+        }else
+            cout << "ERROR solo el usuario root puede ejecutar este comando" << endl;
+    }else
+        cout << "ERROR necesita iniciar sesion para poder ejecutar este comando" << endl;
+}
+
+int verificarDatos(QString user, QString password, QString direccion){
+    FILE *fp = fopen(direccion.toStdString().c_str(),"rb+");
+
+    char cadena[400] = "\0";
+    SuperBloque super;
+    InodoTable inodo;
+
+    fseek(fp,currentSession.inicioSuper,SEEK_SET);
+    fread(&super,sizeof(SuperBloque),1,fp);
+    fseek(fp,super.s_inode_start + static_cast<int>(sizeof(InodoTable)),SEEK_SET);
+    fread(&inodo,sizeof(InodoTable),1,fp);
+
+    for(int i = 0; i < 15; i++){
+        if(inodo.i_block[i] != -1){
+            BloqueArchivo archivo;
+            fseek(fp,super.s_block_start,SEEK_SET);
+            for(int j = 0; j <= inodo.i_block[i]; j++){
+                fread(&archivo,sizeof(BloqueArchivo),1,fp);
+            }
+            strcat(cadena,archivo.b_content);
+        }
+    }
+
+    fclose(fp);
+
+    char *end_str;
+    char *token = strtok_r(cadena,"\n",&end_str);
+    while(token != nullptr){
+        char id[2];
+        char tipo[2];
+        QString group;
+        char user_[12];
+        char password_[12];
+        char *end_token;
+        char *token2 = strtok_r(token,",",&end_token);
+        strcpy(id,token2);
+        if(strcmp(id,"0") != 0){
+            token2=strtok_r(nullptr,",",&end_token);
+            strcpy(tipo,token2);
+            if(strcmp(tipo,"U") == 0){
+                token2 = strtok_r(nullptr,",",&end_token);
+                group = token2;
+                token2 = strtok_r(nullptr,",",&end_token);
+                strcpy(user_,token2);
+                token2 = strtok_r(nullptr,",",&end_token);
+                strcpy(password_,token2);
+                if(strcmp(user_,user.toStdString().c_str()) == 0){
+                    if(strcmp(password_,password.toStdString().c_str()) == 0){
+                        currentSession.direccion = direccion;
+                        currentSession.id_user = atoi(id);
+                        currentSession.id_grp = buscarExisteGrupo(group);
+                        return 1;
+                    }else
+                        return 2;
+                }
+            }
+        }
+        token = strtok_r(nullptr,"\n",&end_str);
+    }
+
+    return 0;
+}
+
+char LogicFit(QString direccion, QString nombre){
+    string auxPath = direccion.toStdString();
+    string auxName = nombre.toStdString();
+    FILE *fp;
+    if((fp = fopen(auxPath.c_str(),"rb+"))){
+        int extendida = -1;
+        MBR masterboot;
+        fseek(fp,0,SEEK_SET);
+        fread(&masterboot,sizeof(MBR),1,fp);
+        for(int i = 0; i < 4; i++){
+            if(masterboot.mbr_partition[i].part_type == 'E'){
+                extendida = i;
+                break;
+            }
+        }
+        if(extendida != -1){
+            EBR extendedBoot;
+            fseek(fp, masterboot.mbr_partition[extendida].part_start,SEEK_SET);
+            while(fread(&extendedBoot,sizeof(EBR),1,fp)!=0 && (ftell(fp) < masterboot.mbr_partition[extendida].part_start + masterboot.mbr_partition[extendida].part_size)){
+                if(strcmp(extendedBoot.part_name, auxName.c_str()) == 0){
+                    return extendedBoot.part_fit;
+                }
+            }
+        }
+        fclose(fp);
+    }
+    return -1;
+}
+
+int LOG_IN(QString direccion, QString nombre, QString user, QString password){
+    int index = buscarParticion_Primaria_Extendida(direccion,nombre);
+    if(index != -1){
+        MBR masterboot;
+        SuperBloque super;
+        InodoTable inodo;
+        FILE *fp = fopen(direccion.toStdString().c_str(),"rb+");
+        fread(&masterboot,sizeof(MBR),1,fp);
+        fseek(fp,masterboot.mbr_partition[index].part_start,SEEK_SET);
+        fread(&super,sizeof(SuperBloque),1,fp);
+        fseek(fp,super.s_inode_start + static_cast<int>(sizeof(InodoTable)),SEEK_SET);
+        fread(&inodo,sizeof(InodoTable),1,fp);
+        fseek(fp,super.s_inode_start + static_cast<int>(sizeof(InodoTable)),SEEK_SET);
+        inodo.i_atime = time(nullptr);
+        fwrite(&inodo,sizeof(InodoTable),1,fp);
+        fclose(fp);
+        currentSession.inicioSuper = masterboot.mbr_partition[index].part_start;
+        currentSession.fit = masterboot.mbr_partition[index].part_fit;
+        currentSession.inicioJournal = masterboot.mbr_partition[index].part_start + static_cast<int>(sizeof(SuperBloque));
+        currentSession.tipo_sistema = super.s_filesystem_type;
+        return verificarDatos(user,password, direccion);
+    }else{
+        index = buscarParticion_Logica(direccion, nombre);
+        if(index != -1){
+            SuperBloque super;
+            InodoTable inodo;
+            FILE *fp = fopen(direccion.toStdString().c_str(),"rb+");
+            fseek(fp,index + static_cast<int>(sizeof(EBR)),SEEK_SET);
+            fread(&super,sizeof(SuperBloque),1,fp);
+            fseek(fp,super.s_inode_start + static_cast<int>(sizeof(InodoTable)),SEEK_SET);
+            fread(&inodo,sizeof(InodoTable),1,fp);
+            fseek(fp,super.s_inode_start + static_cast<int>(sizeof(InodoTable)),SEEK_SET);
+            inodo.i_atime = time(nullptr);
+            fwrite(&inodo,sizeof(InodoTable),1,fp);
+            fclose(fp);
+            currentSession.inicioSuper = index + static_cast<int>(sizeof(EBR));
+            currentSession.fit = LogicFit(direccion,nombre);
+            return verificarDatos(user,password,direccion);
+        }
+    }
+    return 0;
+}
+
+void RLOGIN(Nodo *raiz){
+    bool BanderaUser = false;
+    bool BanderaPassword = false;
+    bool BanderaID = false;
+    bool Bandera = false;
+    QString user = "";
+    QString password = "";
+    QString id = "";
+
+    for(int i = 0; i < raiz->hijos.count(); i++) {
+        Nodo n = raiz->hijos.at(i);
+        switch (n.tipo_) {
+        case USER:
+        {
+            if(BanderaUser){
+                cout << "ERROR parametro -usuario ya definido" << endl;
+                Bandera = true;
+                break;
+            }
+            BanderaUser = true;
+            user = n.valor;
+            user = user.replace("\"","");
+        }
+            break;
+        case PASSWORD:
+        {
+            if(BanderaPassword){
+                cout << "ERROR parametro -password ya definido" << endl;
+                Bandera = true;
+                break;
+            }
+            BanderaPassword = true;
+            password = n.valor;
+            user = user.replace("\"","");
+        }
+            break;
+        case ID:
+        {
+            if(BanderaID){
+                cout << "ERROR parametro -id ya definido" << endl;
+                Bandera = true;
+                break;
+            }
+            BanderaID = true;
+            id = n.valor;
+        }
+            break;
+        }
+    }
+
+    if(!Bandera){
+        if(BanderaUser){
+            if(BanderaPassword){
+                if(BanderaID){
+                    if(!Bandera_login){
+                        NodoListaMount *aux = lista->getNodo(id);
+                        if(aux != nullptr){
+                            int res = LOG_IN(aux->direccion,aux->nombre,user,password);
+                            if(res == 1){
+                                Bandera_login = true;
+                                cout << "Sesion iniciada con exito" << endl;
+                            }else if(res == 2)
+                                cout << "ERROR Contrasena incorrecta" << endl;
+                            else if(res == 0)
+                                cout << "ERROR Usuario no encontrado" << endl;
+                        }else
+                            cout << "ERROR no se encuentra ninguna particion montada con ese id " << endl;
+                    }else
+                        cout << "ERROR sesion activa, cierre sesion para poder volver a iniciar sesion" << endl;
+                }else
+                    cout << "ERROR parametro -id no definido" << endl;
+            }else
+                cout << "ERROR parametro -password no definido" << endl;
+        }else
+            cout << "ERROR parametro -usuario no definido" << endl;
+    }
+}
+
+//Funciones extras
+
 void Menu()
 {
 
@@ -1770,6 +4196,26 @@ void Menu()
     cout << "*----------------------------------------*" <<endl;
     cout << endl;
     cout << "Ingrese un Comando:" << endl;
+}
+
+void REXEC(Nodo *raiz)
+{
+    QString valPath = raiz->hijos.at(0).valor;
+    string auxPath = valPath.toStdString();
+    FILE *fp;
+    if((fp = fopen(auxPath.c_str(),"r"))){
+        char line[400]="";
+        memset(line,0,sizeof(line));
+        while(fgets(line,sizeof line,fp)){
+            if(line[0]!='\n'){
+                cout << ">> "<< line;
+                leerComando(line);
+            }
+            memset(line,0,sizeof(line));
+        }
+        fclose(fp);
+    }else
+        cout << "ERROR: script no encontrado o no se pudo abrir correctamente" << endl;
 }
 
 void Reconocer_Comandos(Nodo *raiz)
@@ -1812,52 +4258,56 @@ void Reconocer_Comandos(Nodo *raiz)
             break;
         case LOGIN:
         {
-
+            Nodo n = raiz->hijos.at(0);
+            RLOGIN(&n);
         }
             break;
         case LOGOUT:
         {
-
+            LOG_OUT();
         }
             break;
         case MKGRP:
         {
-
+            RMKGRP(raiz);
         }
             break;
         case RMGRP:
         {
-
+            RRMGRP(raiz);
         }
             break;
         case MKUSR:
         {
-
+            Nodo n = raiz->hijos.at(0);
+            RMKUSR(&n);
         }
             break;
         case RMUSR:
         {
-
+            RRMUSR(raiz);
         }
             break;
         case CHMOD:
         {
-
+            Nodo n = raiz->hijos.at(0);
+            RCHMOD(&n);
         }
             break;
         case MKFILE:
         {
-
+            Nodo n = raiz->hijos.at(0);
+            RMKFILE(&n);
         }
             break;
         case CAT:
         {
-
+            RCAT(raiz);
         }
             break;
         case REM:
         {
-
+            RREM(raiz);
         }
             break;
         case EDIT:
@@ -1897,7 +4347,7 @@ void Reconocer_Comandos(Nodo *raiz)
             break;
         case PAUSE:{
             cout << "Presiona enter para continuar ";
-
+            getchar();
         }
             break;
         case RECOVERY:
@@ -1917,14 +4367,16 @@ void Reconocer_Comandos(Nodo *raiz)
             break;
         case EXEC:
         {
-
+            REXEC(raiz);
         }
             break;
-        default: printf("ERROR no se reconoce el comando");
+        default: printf("ERROR no se reconoce el comando, porfavor intentelo de nuevo");
         }
 
 }
+
 //home/curious1924/Escritorio/GitHub/-MIA_Proyecto1_201901907-/MIA_Proyecto1_201901907/main.cpp
+
 void leerComando(char comando[400]){
     //cout<<"comando"<<endl;
     //cout<<comando<<endl;
@@ -1954,7 +4406,7 @@ void leerComando(char comando[400]){
 int main()
 {
     Menu();
-    while(flag_global){
+    while(Bandera_Global){
         char texto[500];
         cout << ">> ";
         fgets(texto, sizeof(texto), stdin);

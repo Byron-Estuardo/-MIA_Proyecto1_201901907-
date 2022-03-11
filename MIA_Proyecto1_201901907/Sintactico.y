@@ -350,7 +350,7 @@ MKFS: MKFS PARAM_MKFS {
                       $$->add(*$1);
                    };
 
-PARAM_MKFS: id igual identificador { $$ = new Nodo("id",$3); }
+PARAM_MKFS: id igual password { $$ = new Nodo("id",$3); }
             | type igual fast { $$ = new Nodo("type", "fast"); }
             | type igual full { $$ = new Nodo("type", "full"); }
             | fs igual fs2 { $$ = new Nodo("fs", "2fs"); }

@@ -45,14 +45,8 @@ int ListaMount::buscarLetra(QString direccion, QString nombre){
     NodoListaMount *aux = primero;
     int retorno = 'a';
     while(aux!=NULL){
-        if((direccion == aux->direccion) && (nombre == aux->nombre)){
-            return -1;
-        }else{
-            if(direccion == aux->direccion){
-                return aux->letra;
-            }else if(retorno <= aux->letra){
-                retorno++;
-            }
+        if((direccion == aux->direccion) && (retorno == aux->letra)){
+            retorno++;
         }
         aux = aux->siguiente;
     }
@@ -63,8 +57,14 @@ int ListaMount::buscarNumero(QString direccion, QString nombre){
     int retorno = 1;
     NodoListaMount *aux = primero;
     while(aux!=nullptr){
-        if((direccion == aux->direccion) && (retorno == aux->num)){
-            retorno++;
+        if((direccion == aux->direccion) && (nombre == aux->nombre)){
+            return -1;
+        }else{
+            if(direccion == aux->direccion){
+                return aux->num;
+            }else if(retorno <= aux->num){
+                retorno++;
+            }
         }
         aux = aux->siguiente;
     }
@@ -98,7 +98,7 @@ NodoListaMount* ListaMount::getNodo(QString id){
 void ListaMount::mostrarLista(){
     NodoListaMount *aux = primero;
     while(aux!=nullptr){
-        cout << "|     "<< aux->nombre.toStdString() << "          " << "07"<<aux->letra<<aux->num << endl;
+        cout << "*     "<< aux->nombre.toStdString() << "    |     " << "07"<<aux->num<<aux->letra <<"     *"<< endl;
         aux = aux->siguiente;
     }
 }
