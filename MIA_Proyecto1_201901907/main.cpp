@@ -2986,6 +2986,30 @@ int nuevaCarpeta(FILE *stream, char fit, bool BanderaPR, char *path, int index){
     return response;
 }
 
+int crearCarpeta(QString path, bool p){
+    FILE *fp = fopen(currentSession.direccion.toStdString().c_str(),"rb+");
+
+    SuperBloque super;
+    fseek(fp,currentSession.inicioSuper,SEEK_SET);
+    fread(&super,sizeof(SuperBloque),1,fp);
+
+    string aux = path.toStdString();
+    char auxPath[500];
+    strcpy(auxPath,aux.c_str());
+    int existe = buscarCarpetaArchivo(fp,auxPath);
+    strcpy(auxPath,aux.c_str());
+    int response = -1;
+
+    if(existe != -1)
+        response = 0;
+    else
+        response = nuevaCarpeta(fp,currentSession.fit,p,auxPath,0);
+
+    fclose(fp);
+
+    return response;
+}
+
 int nuevoArchivo(FILE *stream, char fit, bool BanderaPR, char *path, int size, QString contenido, int index,char *auxPath){
     SuperBloque super;
     InodoTable inodo,inodoNuevo;
@@ -3563,8 +3587,294 @@ int crearArchivo(QString path, bool p, int size, QString cont){
     return response;
 }
 
-void RREM(Nodo *raiz){
+void moverCarpetaArchivo(FILE *stream, int carpeta, char* path,int destino){
+    SuperBloque super;
+    InodoTable inodo;
 
+    fseek(stream,currentSession.inicioSuper,SEEK_SET);
+    fread(&super,sizeof(SuperBloque),1,stream);
+    fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*carpeta,SEEK_SET);
+    fread(&inodo,sizeof(InodoTable),1,stream);
+
+    if(inodo.i_type == '0'){
+        BloqueCarpeta carp;
+        fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*inodo.i_block[0],SEEK_SET);
+        fread(&carp,sizeof(BloqueCarpeta),1,stream);
+        carp.b_content[1].b_inodo = destino;
+        fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*inodo.i_block[0],SEEK_SET);
+        fwrite(&carp,sizeof(BloqueCarpeta),1,stream);
+    }
+
+    BloqueCarpeta carpet;
+    int bloque = 0;
+    int posicion = 0;
+    int pointer = -1;
+    int posPointer = 0;
+    bloqueCarpetaArchivo(stream,path,bloque,posicion,pointer,posPointer);
+    char tempNombre[15];
+    int aux = 0;
+    bool flag = false;
+
+    fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*bloque,SEEK_SET);
+    fread(&carpet,sizeof(BloqueCarpeta),1,stream);
+    strcpy(tempNombre,carpet.b_content[posicion].b_name);
+    aux = carpet.b_content[posicion].b_inodo;
+    memset(carpet.b_content[posicion].b_name,0,sizeof(carpet.b_content[posicion].b_name));
+    carpet.b_content[posicion].b_inodo = -1;
+    fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*bloque,SEEK_SET);
+    fwrite(&carpet,sizeof(BloqueCarpeta),1,stream);
+
+    fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*destino,SEEK_SET);
+    fread(&inodo,sizeof(InodoTable),1,stream);
+
+    for(int i = 0; i < 12; i++){
+        if(inodo.i_block[i] != -1){
+            BloqueCarpeta carp;
+            char byte = '0';
+            fseek(stream,super.s_bm_block_start + inodo.i_block[i],SEEK_SET);
+            byte = static_cast<char>(fgetc(stream));
+            if(byte == '1'){
+                fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*inodo.i_block[i],SEEK_SET);
+                fread(&carp,sizeof(BloqueCarpeta),1,stream);
+                for(int j = 0; j < 4; j++){
+                    if(carp.b_content[j].b_inodo == -1){
+                        strcpy(carp.b_content[j].b_name,tempNombre);
+                        carp.b_content[j].b_inodo = aux;
+                        fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*inodo.i_block[i],SEEK_SET);
+                        fwrite(&carp,sizeof(BloqueCarpeta),1,stream);
+                        flag = true;
+                        cout << "Carpeta/archivo movido con exito" << endl;
+                        break;
+                    }
+                }
+            }
+            if(flag)
+                break;
+        }else{
+            char buffer = '1';
+            int bitBloque = buscarBit(stream,'B',currentSession.fit);
+            inodo.i_block[i] = bitBloque;
+            fseek(stream,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*destino,SEEK_SET);
+            fwrite(&inodo,sizeof(InodoTable),1,stream);
+            BloqueCarpeta nuevaCarpeta;
+            nuevaCarpeta.b_content[0].b_inodo = aux;
+            nuevaCarpeta.b_content[1].b_inodo = -1;
+            nuevaCarpeta.b_content[2].b_inodo = -1;
+            nuevaCarpeta.b_content[3].b_inodo = -1;
+            strcpy(nuevaCarpeta.b_content[0].b_name,tempNombre);
+            strcpy(nuevaCarpeta.b_content[1].b_name,"");
+            strcpy(nuevaCarpeta.b_content[2].b_name,"");
+            strcpy(nuevaCarpeta.b_content[3].b_name,"");
+            fseek(stream,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*bitBloque,SEEK_SET);
+            fwrite(&nuevaCarpeta,sizeof(BloqueCarpeta),1,stream);
+            fseek(stream,super.s_bm_block_start + bitBloque,SEEK_SET);
+            fwrite(&buffer,sizeof(char),1,stream);
+            super.s_free_blocks_count = super.s_free_blocks_count - 1;
+            super.s_first_blo = super.s_first_blo + 1;
+            fseek(stream,currentSession.inicioSuper,SEEK_SET);
+            fwrite(&super,sizeof(SuperBloque),1,stream);
+            cout << "Carpeta/archivo movido con exito" << endl;
+            break;
+        }
+    }
+
+}
+
+void RMV(Nodo *raiz){
+    bool BanderaPath = false;
+    bool BanderaDest = false;
+    bool Bandera = false;
+    QString valPath = "";
+    QString valDest = "";
+
+    for(int i = 0; i < raiz->hijos.count(); i ++){
+        Nodo n = raiz->hijos.at(i);
+        switch (n.tipo_) {
+        case PATH:
+        {
+            if(BanderaPath){
+                cout << "ERROR: parametro -path ya definido "<< endl;
+                Bandera = true;
+                break;
+            }
+            BanderaPath = true;
+            valPath = n.valor;
+            valPath = valPath.replace("\"","");
+        }
+            break;
+        case DEST:
+        {
+            if(BanderaDest){
+                cout << "ERROR: parametro -dest ya definido" << endl;
+                Bandera = true;
+                break;
+            }
+            BanderaDest = true;
+            valDest = n.valor;
+            valDest = valDest.replace("\"","");
+        }
+            break;
+        }
+    }
+
+    if(!Bandera){
+        if(BanderaPath){
+            if(BanderaDest){
+                if(Bandera_login){
+                    FILE *fp = fopen(currentSession.direccion.toStdString().c_str(),"rb+");
+                    char auxPath[500];
+                    char auxDest[500];
+                    strcpy(auxPath,valPath.toStdString().c_str());
+                    strcpy(auxDest,valDest.toStdString().c_str());
+                    int carpeta = buscarCarpetaArchivo(fp,auxPath);
+                    int destino = buscarCarpetaArchivo(fp,auxDest);
+                    if(carpeta != -1){
+                        if(destino != -1){
+                            bool permisos = permisosLecturaRecursivo(fp,carpeta);
+                            if(permisos){
+                                SuperBloque super;
+                                InodoTable inodo;
+                                fseek(fp,currentSession.inicioSuper,SEEK_SET);
+                                fread(&super,sizeof(SuperBloque),1,fp);
+                                fseek(fp,super.s_inode_start + static_cast<int>(sizeof(InodoTable))*destino,SEEK_SET);
+                                fread(&inodo,sizeof(InodoTable),1,fp);
+                                bool permisos2 = permisosDeEscritura(inodo.i_perm,(inodo.i_uid == currentSession.id_user),(inodo.i_gid == currentSession.id_grp));
+                                if(permisos2){
+                                    char auxP[500];
+                                    strcpy(auxP,valPath.toStdString().c_str());
+                                    moverCarpetaArchivo(fp,carpeta,auxP,destino);
+                                }else
+                                    cout << "ERROR: El usuario actual no tiene permisos de escritura en la carpeta destino" << endl;
+                            }else
+                                cout << "ERROR: El usuario actual no tiene permisos en alguna de las carpetas hijas" << endl;
+                        }else
+                            cout << "ERROR: No existe la ruta a donde se movera la carpeta/archivo" << endl;
+                    }else
+                        cout << "ERROR: La carpeta/archivo a mover no existe" << endl;
+                    fclose(fp);
+                }else
+                    cout << "ERROR: Para poder ejecutar este comando necesita iniciar sesion" << endl;
+            }else
+                cout << "ERROR: parametro -dest no definido "<< endl;
+        }else
+            cout << "ERROR: parametro -path no definido" << endl;
+    }
+}
+
+void RMKDIR(Nodo *raiz){
+    bool BanderaPath = false;
+    bool BanderaP = false;
+    bool Bandera = false;
+    QString valPath = "";
+    bool valP = false;
+    for(int i = 0; i < raiz->hijos.count(); i++){
+        Nodo n = raiz->hijos.at(i);
+        switch (n.tipo_) {
+        case PATH:
+        {
+            if(BanderaPath){
+                cout << "ERROR parametro -path ya definido" << endl;
+                Bandera = true;
+                break;
+            }
+            BanderaPath = true;
+            valPath = n.valor;
+            valPath = valPath.replace("\"","");
+        }
+            break;
+        case P:
+        {
+            if(BanderaP){
+                cout << "ERROR parametro -p ya definido" << endl;
+                Bandera = true;
+                break;
+            }
+            BanderaP = true;
+            valP = true;
+        }
+            break;
+        }
+    }
+
+    if(!Bandera){
+        if(BanderaPath){
+            QFileInfo fileName(valPath);
+            QString name = fileName.fileName();
+            if(name.length() <= 11){
+                if(Bandera_login){
+                    int result = crearCarpeta(valPath,valP);
+                    if(result == 0)
+                        cout << "ERROR: La carpeta ya existe" << endl;
+                    else if(result == 1){
+                        if(currentSession.tipo_sistema == 3){
+                            char aux[500];
+                            char operacion[8];
+                            char content[5];
+                            strcpy(aux,valPath.toStdString().c_str());
+                            strcpy(operacion,"mkdir");
+                            strcpy(content,"null");
+                            guardarJournal(operacion,1,664,aux,content);
+                        }
+                        cout << "Carpeta creada con exito" << endl;
+                    }else if(result == 2)
+                        cout << "ERROR: No se tienen permisos de escritura" << endl;
+                    else if(result == 3){
+                        cout << "ERROR: No existe el directorio y no esta el parametro -p" << endl;
+                    }
+                }else
+                    cout << "ERROR: necesita iniciar sesion para poder ejecutar este comando" << endl;
+            }else
+                cout << "ERROR: el nombre de la carpeta es mas grande de lo esperado" << endl;
+        }else
+            cout << "ERROR: parametro -path no definido" << endl;
+    }
+}
+
+void RREM(Nodo *raiz){
+    QString path = raiz->hijos.at(0).valor;
+    path = path.replace("\"","");
+    char auxPath[500];
+    strcpy(auxPath,path.toStdString().c_str());
+    if(Bandera_login){
+        FILE *fp = fopen(currentSession.direccion.toStdString().c_str(),"rb+");
+        int existe = buscarCarpetaArchivo(fp,auxPath);
+        strcpy(auxPath,path.toStdString().c_str());
+        if(existe != -1){
+            bool permisos = permisosEscrituraRecursivo(fp,existe);
+            if(permisos){
+                SuperBloque super;
+                BloqueCarpeta carpeta;
+                BloqueApuntadores apuntador;
+                int bloque = 0;
+                int posicion = 0;
+                int pointer = -1;
+                int posPointer = 0;
+                fseek(fp,currentSession.inicioSuper,SEEK_SET);
+                fread(&super,sizeof(SuperBloque),1,fp);
+                bloqueCarpetaArchivo(fp,auxPath,bloque,posicion,pointer,posPointer);
+                if(pointer == -1){
+                    fseek(fp,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*bloque,SEEK_SET);
+                    fread(&carpeta,sizeof(BloqueCarpeta),1,fp);
+                    memset(carpeta.b_content[posicion].b_name,0,sizeof(carpeta.b_content[posicion].b_name));
+                    carpeta.b_content[posicion].b_inodo = -1;
+                    fseek(fp,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*bloque,SEEK_SET);
+                    fwrite(&carpeta,sizeof(BloqueCarpeta),1,fp);
+                }else{
+                    fseek(fp,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*pointer,SEEK_SET);
+                    fread(&apuntador,sizeof(BloqueApuntadores),1,fp);
+                    apuntador.b_pointer[posPointer] = -1;
+                    fseek(fp,super.s_block_start + static_cast<int>(sizeof(BloqueCarpeta))*pointer,SEEK_SET);
+                    fwrite(&apuntador,sizeof(BloqueApuntadores),1,fp);
+                }
+                eliminarCarpetaArchivo(fp,existe);
+                cout << "Removido con exito" << endl;
+            }else
+                cout << "ERROR: alguna carpeta hija no posee permisos de escritura" << endl;
+        }else
+            cout << "ERROR: no se encuentra la direccion" << endl;
+        fclose(fp);
+    }else
+        cout << "ERROR: para ejecutar este comando necesita iniciar sesion" << endl;
 }
 
 void RCAT(Nodo *raiz){
@@ -4185,6 +4495,202 @@ void RLOGIN(Nodo *raiz){
     }
 }
 
+//Recovery system
+
+bool isNumber(string numero){
+    bool response = false;
+    for (int i = 0; i < static_cast<int>(numero.length()); i++) {
+        if(isdigit(numero[i]))
+            response = true;
+        else{
+            response = false;
+            break;
+        }
+    }
+    return response;
+}
+
+Usuario getUsuario(QString direccion,int inicioSuper, int usuario){
+    FILE *fp = fopen(direccion.toStdString().c_str(),"rb+");
+
+    char cadena[400] = "\0";
+    SuperBloque super;
+    InodoTable inodo;
+    Usuario response;
+
+    fseek(fp,inicioSuper,SEEK_SET);
+    fread(&super,sizeof(SuperBloque),1,fp);
+    fseek(fp,super.s_inode_start + static_cast<int>(sizeof(InodoTable)), SEEK_SET);
+    fread(&inodo,sizeof(InodoTable),1,fp);
+
+    for(int i = 0; i < 15; i++){
+        if(inodo.i_block[i] != -1){
+            BloqueArchivo archivo;
+            fseek(fp,super.s_block_start,SEEK_SET);
+            for(int j = 0; j <= inodo.i_block[i]; j++){
+                fread(&archivo,sizeof(BloqueArchivo),1,fp);
+            }
+            strcat(cadena,archivo.b_content);
+        }
+    }
+
+    fclose(fp);
+
+    char *end_str;
+    char *token = strtok_r(cadena,"\n",&end_str);
+    while(token != nullptr){
+        char id[2];
+        char tipo[2];
+        char user[12];
+        char grupo[12];
+        char *end_token;
+        char *token2 = strtok_r(token,",",&end_token);
+        strcpy(id,token2);
+        if(strcmp(id,"0") != 0){
+            token2 = strtok_r(nullptr,",",&end_token);
+            strcpy(tipo,token2);
+            if(strcmp(tipo,"U") == 0){
+                token2 = strtok_r(nullptr,",",&end_token);
+                strcpy(grupo,token2);
+                token2 = strtok_r(nullptr,",",&end_token);
+                strcpy(user,token2);
+                int idAux = atoi(id);
+                if(idAux == usuario){
+                    QString groupName(grupo);
+                    response.id_usr = atoi(id);
+                    response.id_grp = buscarExisteGrupo(groupName);
+                    strcpy(response.username,user);
+                    strcpy(response.group,grupo);
+                    return response;
+                }
+
+            }
+        }
+        token = strtok_r(nullptr,"\n",&end_str);
+    }
+    return response;
+}
+
+void systemLoss(QString id){
+    NodoListaMount *n = lista->getNodo(id);
+    if(n != nullptr){
+        if(Bandera_login){
+            SuperBloque super;
+            FILE *fp = fopen(n->direccion.toStdString().c_str(),"rb+");
+            int index = buscarParticion_Primaria_Extendida(n->direccion,n->nombre);
+            if(index != -1){
+                MBR masterboot;
+                fread(&masterboot,sizeof(MBR),1,fp);
+                fseek(fp,masterboot.mbr_partition[index].part_start,SEEK_SET);
+                fread(&super,sizeof(SuperBloque),1,fp);
+            }else{
+                index = buscarParticion_Logica(n->direccion,n->nombre);
+                if(index != -1){
+                    EBR extendedBoot;
+                    fseek(fp,index,SEEK_SET);
+                    fread(&extendedBoot,sizeof(EBR),1,fp);
+                    fread(&super,sizeof(SuperBloque),1,fp);
+                }
+            }
+            if(super.s_filesystem_type == 3){
+                char buffer = '0';
+                int inicio = super.s_bm_inode_start;
+                int fin = super.s_block_start + super.s_block_size*(super.s_blocks_count);
+                fseek(fp,inicio,SEEK_SET);
+                for(int i = inicio; i < fin; i++)
+                    fputc(buffer,fp);
+                fclose(fp);
+                cout << "STOP: {Fatal System Error}" << endl;
+                cout << "Press enter to try to continue" << endl;
+                getchar();
+            }else
+                cout << "ERROR: No se puede ejecutar en un sistema EXT2" << endl;
+        }else
+            cout << "ERROR: Se necesita iniciar sesion para poder ejecutar este comando" << endl;
+    }else
+        cout << "ERROR: No se encuentra la particion" << endl;
+}
+
+void systemRecovery(QString id){
+    NodoListaMount *n = lista->getNodo(id);
+    if(n != nullptr){
+        if(Bandera_login){
+            int id_usr = currentSession.id_user;
+            int id_grp = currentSession.id_grp;
+            Usuario user;
+            SuperBloque super;
+            int index = buscarParticion_Primaria_Extendida(n->direccion,n->nombre);
+            int inicioJournal = 0;
+            int inicioSuper = 0;
+            FILE *fp = fopen(n->direccion.toStdString().c_str(),"rb+");
+            if(index != -1){
+                MBR masterboot;
+                fread(&masterboot,sizeof(MBR),1,fp);
+                fseek(fp,masterboot.mbr_partition[index].part_start,SEEK_SET);
+                inicioJournal = masterboot.mbr_partition[index].part_start + static_cast<int>(sizeof(SuperBloque));
+                inicioSuper = masterboot.mbr_partition[index].part_start;
+                fread(&super,sizeof(SuperBloque),1,fp);
+                FEXT3(masterboot.mbr_partition[index].part_start, masterboot.mbr_partition[index].part_start + masterboot.mbr_partition[index].part_size,n->direccion);
+            }else{
+                index = buscarParticion_Logica(n->direccion,n->nombre);
+                if(index != -1){
+                    EBR extendedBoot;
+                    fseek(fp,index,SEEK_SET);
+                    fread(&extendedBoot,sizeof(EBR),1,fp);
+                    fread(&super,sizeof(SuperBloque),1,fp);
+                    fseek(fp,index,SEEK_SET);
+                    int init = static_cast<int>(ftell(fp));
+                    FEXT3(init,init+extendedBoot.part_size,n->direccion);
+                }
+            }
+            Journal registro;
+            if(super.s_filesystem_type == 3){
+                string punto = "...";
+                fseek(fp,inicioJournal,SEEK_SET);
+                while(ftell(fp) < super.s_bm_inode_start){
+                    fread(&registro,sizeof(Journal),1,fp);
+                    if(strcmp(registro.journal_operation_type,"mkgrp") == 0 || strcmp(registro.journal_operation_type,"mkusr") == 0){
+                        currentSession.id_user = 1;
+                        currentSession.id_grp = 1;
+                        QString datos(registro.journal_name);
+                        agregarUsersTXT(datos);
+                    }else if(strcmp(registro.journal_operation_type,"mkdir") == 0){
+                        user = getUsuario(n->direccion,inicioSuper,registro.journal_owner);
+                        currentSession.id_user = user.id_usr;
+                        currentSession.id_grp = user.id_grp;
+                        QString path(registro.journal_name);
+                        crearCarpeta(path,true);
+                    }else if(strcmp(registro.journal_operation_type,"mkfile") == 0){
+                        user = getUsuario(n->direccion,inicioSuper,registro.journal_owner);
+                        currentSession.id_user = user.id_usr;
+                        currentSession.id_grp = user.id_grp;
+                        QString path(registro.journal_name);
+                        bool aux = isNumber(registro.journal_content);
+                        if(aux){
+                            int size = atoi(registro.journal_content);
+                            crearArchivo(path,true,size,"");
+                        }else
+                            crearArchivo(path,true,0,registro.journal_content);
+                    }
+                    cout << "\rAnalizando Journaling ..." << flush;
+                }
+                cout << endl;
+                for(int i = 1; i <= 20; i++){
+                    cout << "\r[-----" << i*5 << "%-----] Restaurando el sistema" << flush;
+                    this_thread::sleep_for(chrono::milliseconds(200));
+                }
+                cout << endl;
+                cout << "El sistema se ha restaurado con exito" << endl;
+                currentSession.id_user = id_usr;
+                currentSession.id_grp = id_grp;
+            }else
+                cout << "ERROR: No se puede ejecutar en un sistema EXT2" << endl;
+        }else
+            cout << "ERROR: Se necesita iniciar sesion para poder ejecutar este comando" << endl;
+    }else
+        cout << "ERROR: No se encuentra la particion" << endl;
+}
+
 //Funciones extras
 
 void Menu()
@@ -4312,37 +4818,39 @@ void Reconocer_Comandos(Nodo *raiz)
             break;
         case EDIT:
         {
-
+            cout<< "nel amigo, no funciona el EDIT" <<endl;
         }
             break;
         case REN:
         {
-
+            cout<< "nel amigo, no funciona el RENAME" <<endl;
         }
             break;
         case MKDIR:
         {
-
+            Nodo n = raiz->hijos.at(0);
+            RMKDIR(&n);
         }
             break;
         case CP:
         {
-
+            cout<< "nel amigo, no funciona el COPY" <<endl;
         }
             break;
         case MV:
         {
-
+            Nodo n = raiz->hijos.at(0);
+            RMV(&n);
         }
             break;
         case CHOWN:
         {
-
+            cout<< "nel amigo, no funciona el CHOWN" <<endl;
         }
             break;
         case CHGRP:
         {
-
+            cout<< "nel amigo, no funciona el CHGRP" <<endl;
         }
             break;
         case PAUSE:{
@@ -4352,12 +4860,12 @@ void Reconocer_Comandos(Nodo *raiz)
             break;
         case RECOVERY:
         {
-
+            systemRecovery(raiz->hijos.at(0).valor);
         }
             break;
         case LOSS:
         {
-
+            systemLoss(raiz->hijos.at(0).valor);
         }
             break;
         case REP:
