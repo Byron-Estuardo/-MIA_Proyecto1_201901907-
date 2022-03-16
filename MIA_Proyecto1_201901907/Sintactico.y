@@ -293,7 +293,7 @@ PARAMETRO_M: path igual cadena { $$ = new Nodo("path",$3); }
              | name igual identificador { $$ = new Nodo("name", $3); }
              | name igual cadena { $$ = new Nodo("name",$3); };
 
-UNMOUNT: unmount id igual identificador {
+UNMOUNT: unmount id igual password {
                                           $$ = new Nodo("UNMOUNT", "");
                                           Nodo *n = new Nodo("id",$4);
                                           $$->add(*n);
@@ -326,7 +326,7 @@ PARAMETRO_R: name igual mbr { $$ = new Nodo("name","mbr"); }
              | name igual ls { $$ = new Nodo("name", "ls"); }
              | path igual cadena{ $$ = new Nodo("path", $3); }
              | path igual ruta { $$ = new Nodo("path",$3); }
-             | id igual identificador { $$ = new Nodo("id", $3); }
+             | id igual password { $$ = new Nodo("id", $3); }
              | rutaRep igual ruta { $$ = new Nodo("ruta", $3); }
              | rutaRep igual cadena { $$ = new Nodo("ruta", $3); };
 
@@ -371,7 +371,7 @@ PARAM_LOGIN: usr igual identificador { $$ = new Nodo("user", $3); }
             | pwd igual identificador { $$ = new Nodo("password", $3); }
             | pwd igual password { $$ = new Nodo("password", $3); }
             | pwd igual cadena { $$ = new Nodo("password", $3); }
-            | id igual identificador { $$ = new Nodo("id", $3); };
+            | id igual password { $$ = new Nodo("id", $3); };
 
 MKGRP: mkgrp name igual identificador {
                                         $$ = new Nodo("MKGRP","");
