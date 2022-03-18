@@ -5740,6 +5740,7 @@ void Menu()
     cout << "*-------------- PROYECTO 1 --------------*" <<endl;
     cout << "*       Byron Estuardo Caal Catun        *" <<endl;
     cout << "*               201901907                *" <<endl;
+    cout << "*      Que Sea Lo Que Dios Quiera F      *" <<endl;
     cout << "*----------------------------------------*" <<endl;
     cout << endl;
     cout << "Ingrese un Comando:" << endl;
