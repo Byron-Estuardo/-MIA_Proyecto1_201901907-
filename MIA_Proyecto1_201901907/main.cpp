@@ -125,8 +125,8 @@ QString getFileName(QString direccion){
 void crearDisco(QString direccion){
     QString aux = getDirectorio(direccion);
     string comando = "sudo mkdir -p \'"+aux.toStdString()+"\'";//pa crear el archivo
-    //cout<<"direccion";
-    //cout<<aux.toStdString();
+    cout<<"direccion";
+    cout<<aux.toStdString();
     system(comando.c_str());
     string comando2 = "sudo chmod -R 777 \'"+aux.toStdString()+"\'";//y pa darle los permisos al archivo
     //cout<<"permisos direccion";
@@ -1209,7 +1209,6 @@ int tamano_Particion_Logica(QString direccion, QString nombre){
 }
 
 //Administracion de discos
-
 void RMKFS(Nodo *raiz){
     bool BanderaID = false;
     bool BanderaType = false;
@@ -5772,6 +5771,7 @@ void Reconocer_Comandos(Nodo *raiz)
         {
         case MKDISK:
         {
+            raiz;
             Nodo n = raiz->hijos.at(0);
             RMKDISK(&n);
         }

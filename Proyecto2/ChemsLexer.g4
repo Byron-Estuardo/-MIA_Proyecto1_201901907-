@@ -1,0 +1,55 @@
+lexer grammar ChemsLexer;
+
+MKDISK:          'mkdisk';
+RMDISK:          'rmdisk';
+FDISK:           'fdisk';
+MOUNT:           'mount';
+MKFS:            'mkfs';
+LOGIN:           'login';
+LOGOUT:          'logout';
+MKGRP:           'mkgrp';
+RMGRP:           'rmgrp';
+MKUSER:          'mkuser';
+RMUSR:           'rmusr';
+MKFILE:          'mkfile';
+MKDIR:           'mkdir';
+EXEC:            'exec';
+REP:             'rep';
+SIZE:            '-size';
+FIT:             '-fit';
+UNIT:            '-unit';
+PATH:            '-path';
+NAME:            '-name';
+TYPE:            '-type';
+ID:              '-id';
+BF:              'bf';
+FF:              'ff';
+WF:              'wf';
+FAST:            'fast';
+FULL:            'FULL';
+USR:             '-usuario';
+PWD:             '-password';
+PWD1:            '-pwd';
+GRP:             '-grp';
+R:               '-r';
+CONT:            '-cont';
+P:               '-p';
+PAUSA:           'pause';
+DISK:            'disk';
+TREE:            'tree';
+FILE:            'file';
+
+LETRA: [a-zA-Z];
+ENTERO: ('-')?[0-9]+;
+CARACTER: ({[a-zA-Z]}|{('-')?[0-9]+});
+IDENTIFICADOR: {[a-zA-Z]}({[a-zA-Z]}|{('-')?[0-9]+}|'_')*;
+PASSWORD: ({[a-zA-Z]}|{[a-zA-Z]}|[!$@+*])+;
+CADENA: '"'~["]*'"';
+EXTENSION: '.'{{[a-zA-Z]}({[a-zA-Z]}|{('-')?[0-9]+}|'_')*};
+DIAGONAL: '/';
+RUTA: ({'/'}{{[a-zA-Z]}({[a-zA-Z]}|{('-')?[0-9]+}|'_')*})*({'/'}{{[a-zA-Z]}({[a-zA-Z]}|{('-')?[0-9]+}|'_')*}{'.'{{[a-zA-Z]}({[a-zA-Z]}|{('-')?[0-9]+}|'_')*}});
+DIRECTORIO: ({'/'}{{[a-zA-Z]}({[a-zA-Z]}|{('-')?[0-9]+}|'_')*})+;
+
+IGUAL:           '=';
+
+WHITESPACE: [ \\\r\n\t]+ -> skip;
