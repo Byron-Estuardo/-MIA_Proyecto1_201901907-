@@ -1,66 +1,66 @@
 package structs
 
 type Partition struct {
-	Part_status [6]byte
-	Part_type   [6]byte
-	Part_fit    [6]byte
-	Part_start  [60]byte
-	Part_size   [60]byte
-	Part_name   [30]byte
+	Part_status [1]byte
+	Part_type   [1]byte
+	Part_fit    [1]byte
+	Part_start  [20]byte
+	Part_size   [20]byte
+	Part_name   [16]byte
 }
 
 type MBR struct {
-	Mbr_size           [60]byte
-	Mbr_date_created   [16]byte
-	Mbr_disk_signature [20]byte
-	Mbr_disk_fit       [6]byte
+	Mbr_size           [20]byte
+	Mbr_date_created   [20]byte
+	Mbr_disk_signature [2]byte
+	Mbr_disk_fit       [1]byte
 	Mbr_partition      [4]Partition
 }
 
 type EBR struct {
-	Part_status [6]byte
-	Part_fit    [6]byte
-	Part_start  [60]byte
-	Part_size   [60]byte
-	Part_next   [60]byte
-	Part_name   [30]byte
+	Part_status [1]byte
+	Part_fit    [1]byte
+	Part_start  [20]byte
+	Part_size   [20]byte
+	Part_next   [10]byte
+	Part_name   [16]byte
 }
 
 type SuperBloque struct {
-	S_filesystem_type   []byte
-	S_inodes_count      []byte
-	S_blocks_count      []byte
-	S_free_blocks_count []byte
-	S_free_inodes_count []byte
-	S_mtime             []byte
-	S_umtime            []byte
-	S_mnt_count         []byte
-	S_magic             []byte
-	S_inode_size        []byte
-	S_block_size        []byte
-	S_first_ino         []byte
-	S_first_blo         []byte
-	S_bm_inode_start    []byte
-	S_bm_block_start    []byte
-	S_inode_start       []byte
-	S_block_start       []byte
+	S_filesystem_type   uint64
+	S_inodes_count      uint64
+	S_blocks_count      uint64
+	S_free_blocks_count uint64
+	S_free_inodes_count uint64
+	S_mtime             [20]byte
+	S_umtime            [20]byte
+	S_mnt_count         uint64
+	S_magic             uint64
+	S_inode_size        uint64
+	S_block_size        uint64
+	S_first_ino         uint64
+	S_first_blo         uint64
+	S_bm_inode_start    uint64
+	S_bm_block_start    uint64
+	S_inode_start       uint64
+	S_block_start       uint64
 }
 
 type InodoTable struct {
-	I_uid   []byte
-	I_gid   []byte
-	I_size  []byte
-	I_block []byte
+	I_uid   uint64
+	I_gid   uint64
+	I_size  uint64
+	I_block [15]uint64
 	I_type  []byte
-	I_perm  []byte
-	I_atime []byte
-	I_ctime []byte
-	I_mtime []byte
+	I_perm  uint64
+	I_atime [20]byte
+	I_ctime [20]byte
+	I_mtime [20]byte
 }
 
 type Content struct {
-	B_name  []byte
-	B_inodo []byte
+	B_name  [12]byte
+	B_inodo uint64
 }
 
 type BloqueCarpeta struct {
@@ -68,11 +68,11 @@ type BloqueCarpeta struct {
 }
 
 type BloqueArchivo struct {
-	B_content []byte
+	B_content [64]byte
 }
 
 type BloqueApuntadores struct {
-	B_pointer []byte
+	B_pointer uint64
 }
 
 type Sesion struct {
@@ -86,9 +86,9 @@ type Sesion struct {
 }
 
 type Usuario struct {
-	Id_usr   []byte
-	Id_grp   []byte
-	Username []byte
-	Password []byte
-	Group    []byte
+	Id_usr   uint64
+	Id_grp   uint64
+	Username [12]byte
+	Password [12]byte
+	Group    [12]byte
 }
