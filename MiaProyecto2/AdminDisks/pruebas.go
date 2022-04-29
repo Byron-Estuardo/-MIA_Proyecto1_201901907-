@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"strconv"
@@ -23,6 +24,8 @@ type NodoMount struct {
 }
 
 var ListaMount = []NodoMount{}
+var BanderaLogin bool = false
+var CurrentSession = structs.Sesion{}
 
 //Funciones Extras/Necesarias
 
@@ -698,6 +701,195 @@ func CrearParticionExtendida(direccion string, nombre string, size int, fit stri
 	}
 }
 
+func BuscarNumero(direccion string, nombre string) int {
+	var retorno int = 1
+	for i := len(ListaMount) - 1; i >= 0; i-- {
+		if direccion == ListaMount[i].direccion && nombre == ListaMount[i].nombre {
+			return -1
+		} else {
+			if direccion == ListaMount[i].direccion {
+				return ListaMount[i].num
+			} else if retorno <= ListaMount[i].num {
+				retorno++
+			}
+		}
+	}
+	return retorno
+}
+
+func BuscarLetra(direccion string) string {
+	listaLetras := []string{"a", "b", "c", "d", "e", "f", "g", "h"}
+	var retornos int = 1
+	for i := len(ListaMount) - 1; i >= 0; i-- {
+		if direccion == ListaMount[i].direccion && listaLetras[retornos] == ListaMount[i].letra {
+			retornos++
+		}
+	}
+	return string(listaLetras[retornos])
+}
+
+func EXT2(inicio int, tamano int, direccion string) {
+	n := float64(tamano-int(unsafe.Sizeof(structs.SuperBloque{}))) / float64(4+int(unsafe.Sizeof(structs.InodoTable{}))+3*int(unsafe.Sizeof(structs.BloqueArchivo{})))
+	var num_estructuras int = int(math.Floor(n))
+	var num_bloques int = int(3 * num_estructuras)
+
+	super := structs.SuperBloque{}
+
+	super.S_filesystem_type = 2
+	super.S_inodes_count = uint64(num_estructuras)
+	super.S_blocks_count = uint64(num_bloques)
+	super.S_free_blocks_count = uint64(num_bloques - 2)
+	super.S_free_inodes_count = uint64(num_estructuras - 2)
+	copy(super.S_mtime[:], ObtenerFecha())
+	copy(super.S_umtime[:], "0")
+	super.S_mnt_count = 0
+	super.S_magic = uint64(0xEF53)
+	super.S_inode_size = uint64(unsafe.Sizeof(structs.InodoTable{}))
+	super.S_block_size = uint64(unsafe.Sizeof(structs.BloqueArchivo{}))
+	super.S_first_ino = 2
+	super.S_first_blo = 2
+	super.S_bm_inode_start = uint64(inicio + int(unsafe.Sizeof(structs.SuperBloque{})))
+	super.S_bm_inode_start = uint64(inicio + int(unsafe.Sizeof(structs.SuperBloque{})) + num_estructuras)
+	super.S_inode_start = uint64(inicio + int(unsafe.Sizeof(structs.SuperBloque{})) + num_estructuras + num_bloques)
+	super.S_block_start = uint64(inicio + int(unsafe.Sizeof(structs.SuperBloque{})) + num_estructuras + num_bloques + (int(unsafe.Sizeof(structs.SuperBloque{})) * num_estructuras))
+
+	inodo := structs.InodoTable{}
+	bloque := structs.BloqueCarpeta{}
+	var buffer int8 = 0
+	var buffer2 int8 = 1
+	var buffer3 int8 = 2
+	file, _ := os.OpenFile(direccion, os.O_RDWR, 0777)
+	defer file.Close()
+	/* -----------Super Bloque------------- */
+	file.Seek(int64(inicio), 0)
+	var bufferControl bytes.Buffer
+	binary.Write(&bufferControl, binary.BigEndian, &super)
+	_, errs := file.Write(bufferControl.Bytes())
+	if errs != nil {
+		fmt.Println("ERROR WE")
+	}
+	/* -----------BitMap de Inodos------------- */
+	s := &buffer
+	var binario bytes.Buffer
+	binary.Write(&binario, binary.BigEndian, s)
+	for i := 0; i < num_estructuras; i++ {
+		file.Seek(int64(int(super.S_bm_inode_start)+i), 0)
+		_, err := file.Write(binario.Bytes())
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+	/* -----------bit para / y users.txt en BM------------- */
+	file.Seek(int64(super.S_bm_inode_start), 0)
+	s2 := &buffer2
+	var binario2 bytes.Buffer
+	binary.Write(&binario2, binary.BigEndian, s2)
+	_, err := file.Write(binario2.Bytes())
+	if err != nil {
+		fmt.Println(err)
+	}
+	binary.Write(&binario2, binary.BigEndian, s2)
+	_, err1 := file.Write(binario2.Bytes())
+	if err1 != nil {
+		fmt.Println(err1)
+	}
+	/* -----------BitMap de Bloques------------- */
+	binary.Write(&binario, binary.BigEndian, s)
+	for i := 0; i < num_bloques; i++ {
+		file.Seek(int64(int(super.S_bm_block_start)+i), 0)
+		_, err := file.Write(binario.Bytes())
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+	/* -----------bit para / y users.txt en BM------------- */
+	file.Seek(int64(super.S_bm_block_start), 0)
+	binary.Write(&binario2, binary.BigEndian, s2)
+	_, err2 := file.Write(binario2.Bytes())
+	if err2 != nil {
+		fmt.Println(err2)
+	}
+	s3 := &buffer3
+	var binario3 bytes.Buffer
+	binary.Write(&binario3, binary.BigEndian, s3)
+	_, err3 := file.Write(binario3.Bytes())
+	if err3 != nil {
+		fmt.Println(err3)
+	}
+	/* -----------inodo para carpeta root------------- */
+	inodo.I_uid = 1
+	inodo.I_gid = 1
+	inodo.I_size = 0
+	copy(inodo.I_atime[:], ObtenerFecha())
+	copy(inodo.I_ctime[:], ObtenerFecha())
+	copy(inodo.I_mtime[:], ObtenerFecha())
+	inodo.I_block[0] = 0
+	for i := 1; i < 15; i++ {
+		inodo.I_block[i] = -1
+	}
+	copy(inodo.I_type[:], "0")
+	inodo.I_perm = 664
+	file.Seek(int64(super.S_inode_start), 0)
+	var bufferControlSI bytes.Buffer
+	binary.Write(&bufferControlSI, binary.BigEndian, &inodo)
+	_, errsSI := file.Write(bufferControlSI.Bytes())
+	if errsSI != nil {
+		fmt.Println("ERROR WE")
+	}
+	/* -----------Bloque para la carpeta root------------- */
+	copy(bloque.B_content[0].B_name[:], ".")
+	bloque.B_content[0].B_inodo = 0
+
+	copy(bloque.B_content[1].B_name[:], "..")
+	bloque.B_content[1].B_inodo = 0
+
+	copy(bloque.B_content[2].B_name[:], "users.txt")
+	bloque.B_content[2].B_inodo = 1
+
+	copy(bloque.B_content[0].B_name[:], ".")
+	bloque.B_content[0].B_inodo = -1
+
+	file.Seek(int64(super.S_block_start), 0)
+	var bufferControlB bytes.Buffer
+	binary.Write(&bufferControlB, binary.BigEndian, &bloque)
+	_, errB := file.Write(bufferControlB.Bytes())
+	if errB != nil {
+		fmt.Println("ERROR WE")
+	}
+	/* -----------inodo para carpeta users.txt------------- */
+	inodo.I_uid = 1
+	inodo.I_gid = 1
+	inodo.I_size = 27
+	copy(inodo.I_atime[:], ObtenerFecha())
+	copy(inodo.I_ctime[:], ObtenerFecha())
+	copy(inodo.I_mtime[:], ObtenerFecha())
+	inodo.I_block[0] = 1
+	for i := 1; i < 15; i++ {
+		inodo.I_block[i] = -1
+	}
+	copy(inodo.I_type[:], "1")
+	inodo.I_perm = 755
+	sizesInodeTable := uint64(unsafe.Sizeof(structs.InodoTable{}))
+	file.Seek(int64(super.S_inode_start+sizesInodeTable), 0)
+	var bufferControl2 bytes.Buffer
+	binary.Write(&bufferControl2, binary.BigEndian, &inodo)
+	_, errs2 := file.Write(bufferControl2.Bytes())
+	if errs2 != nil {
+		fmt.Println("ERROR WE")
+	}
+	/* -----------Bloque para users.txt------------- */
+	archivo := structs.BloqueArchivo{}
+	copy(archivo.B_content[:], "1,G,root\n1,U,root,root,123\n")
+	sizesBloqueCarpeta := uint64(unsafe.Sizeof(structs.BloqueCarpeta{}))
+	file.Seek(int64(super.S_inode_start+sizesBloqueCarpeta), 0)
+	var bufferControl3 bytes.Buffer
+	binary.Write(&bufferControl3, binary.BigEndian, &archivo)
+	_, errs3 := file.Write(bufferControl3.Bytes())
+	if errs3 != nil {
+		fmt.Println("ERROR WE")
+	}
+}
+
 // mkdisk("5", "wf", "m", "/home/curious1924/Escritorio/Joder/disco3.dk")
 func Mkdisk(size string, fit string, unit string, path string) {
 	fmt.Println("Que pdo!!!")
@@ -932,33 +1124,6 @@ func Fdisk(size string, fit string, unit string, path string, types string, name
 	}
 }
 
-func BuscarNumero(direccion string, nombre string) int {
-	var retorno int = 1
-	for i := len(ListaMount) - 1; i >= 0; i-- {
-		if direccion == ListaMount[i].direccion && nombre == ListaMount[i].nombre {
-			return -1
-		} else {
-			if direccion == ListaMount[i].direccion {
-				return ListaMount[i].num
-			} else if retorno <= ListaMount[i].num {
-				retorno++
-			}
-		}
-	}
-	return retorno
-}
-
-func BuscarLetra(direccion string) string {
-	listaLetras := []string{"a", "b", "c", "d", "e", "f", "g", "h"}
-	var retornos int = 1
-	for i := len(ListaMount) - 1; i >= 0; i-- {
-		if direccion == ListaMount[i].direccion && listaLetras[retornos] == ListaMount[i].letra {
-			retornos++
-		}
-	}
-	return string(listaLetras[retornos])
-}
-
 func Mount(path string, name string) {
 	var BanderaPath bool = false
 	var BanderaName bool = false
@@ -1027,93 +1192,68 @@ func Mount(path string, name string) {
 	}
 }
 
-/*
-for{
-	if{
+func Mkfs(ids string, typess string) {
+	var BanderaID bool = false
+	var id string = ""
+	var banderaEncontrado bool = false
+	var types string = ""
 
+	if ids != "" {
+		BanderaID = true
+		id = ids
 	}
-}
-*/
-
-/*
-func CrearParticionLogicas(direccion string, nombre string, size int, fit string, unit string) {
-	var auxFit string = ""
-	var auxUnit string = ""
-	var auxPath string = direccion
-	var size_bytes int = 1024
-	var buffer1 int8 = 1
-	TemporalMBR := structs.MBR{}
-	var Tama int = int(unsafe.Sizeof(TemporalMBR))
-	if fit != "" {
-		auxFit = fit
-	} else {
-		auxFit = "W"
+	if typess != "" {
+		types = typess
 	}
-	if unit != "" {
-		auxUnit = unit
-		if auxUnit == "b" {
-			size_bytes = size
-		} else if auxUnit == "k" {
-			size_bytes = size * 1024
-		} else {
-			size_bytes = size * 1024 * 1024
-		}
-	} else {
-		size_bytes = size * 1024
-	}
-	MBR := structs.MBR{}
-	file, err := os.OpenFile(auxPath, os.O_RDWR, 0777)
-	defer file.Close()
-	if err != nil {
-		fmt.Println("Error El disco no existe")
-	} else {
-		var Numero_Extendida = -1
-		file.Seek(0, 0)
-		var size int = int(unsafe.Sizeof(MBR))
-		data := leerBytes(file, size)
-		buffer := bytes.NewBuffer(data)
-		err := binary.Read(buffer, binary.BigEndian, &MBR)
-		if err != nil {
-			fmt.Println("Error")
-		} else {
-			for i := 0; i < 4; i++ {
-				if string(MBR.Mbr_partition[i].Part_type[:]) == "E" {
-					Numero_Extendida = i
-					break
-				}
+	fmt.Println(types)
+	if BanderaID {
+		var nodo = NodoMount{}
+		for i := len(ListaMount) - 1; i >= 0; i-- {
+			if ListaMount[i].id == id {
+				nodo = ListaMount[i]
+				banderaEncontrado = true
+				break
 			}
-			if !ExisteParticion(direccion, nombre) {
-				if Numero_Extendida != -1 {
-					EBR := structs.EBR{}
-					cont, _ := strconv.Atoi(string(MBR.Mbr_partition[Numero_Extendida].Part_start[:]))
-					file.Seek(int64(cont), 0)
-					var size int = int(unsafe.Sizeof(EBR))
-					data := leerBytes(file, size)
-					buffer := bytes.NewBuffer(data)
-					err := binary.Read(buffer, binary.BigEndian, &EBR)
-					if err != nil {
-						fmt.Println("Error")
-					} else {
-						if string(EBR.Part_size[:]) == "0" {
-							partsizes, _ := strconv.Atoi(string(MBR.Mbr_partition[Numero_Extendida].Part_size[:]))
-							if partsizes < size_bytes {
-								fmt.Println("ERROR la particion logica a crear excede el espacio disponible de la particion extendida ")
-							} else {
-								var stringStart string = string(TempMBR.Mbr_partition[extendida].Part_start[:])
-								InicioParticion, _ := strconv.Atoi(stringStart)
-								var sizeEBR int64 = int64(unsafe.Sizeof(structs.EBR{}))
-								var InicioEnviado int64 = int64(InicioParticion)
-								copy(EBR.Part_status[:], "0")
-								copy(EBR.Part_fit[:], auxFit)
-								copy(EBR.Part_start[:], string(int(InicioEnviado - sizeEBR)))
-								copy(EBR.Part_status[:], "0")
-							}
-						}
-					}
-
+		}
+		if banderaEncontrado {
+			index := BuscarParticion_Primaria_Extendida(nodo.direccion, nodo.nombre)
+			if index != -1 {
+				MBR := structs.MBR{}
+				file, err := os.OpenFile(nodo.direccion, os.O_RDWR, 0777)
+				if err != nil {
+					fmt.Println("Error al abrir el archivo")
+					fmt.Println(err)
 				}
+				defer file.Close()
+				file.Seek(0, 0)
+				TempMBR := structs.MBR{}
+				var sizetemp int = int(unsafe.Sizeof(TempMBR))
+				data := leerBytes(file, sizetemp)
+				buffer := bytes.NewBuffer(data)
+				Errores := binary.Read(buffer, binary.BigEndian, &MBR)
+				if Errores != nil {
+					fmt.Println("F perro no se pudo leer el mbr")
+				}
+				inicio, _ := strconv.Atoi(string(MBR.Mbr_partition[index].Part_start[:]))
+				tamano, _ := strconv.Atoi(string(MBR.Mbr_partition[index].Part_size[:]))
+				EXT2(inicio, tamano, nodo.direccion)
 			}
 		}
 	}
 }
-*/
+
+func LogOut() {
+	if BanderaLogin {
+		BanderaLogin = false
+		CurrentSession.Id_user = -1
+		copy(CurrentSession.Direccion[:], "")
+		CurrentSession.InicioSuper = -1
+		fmt.Println("El usuario se deslogueo, ya no se encuentra la session activa")
+	} else {
+		fmt.Println("ERROR no hay ninguna sesion activa")
+	}
+}
+
+//para la validacion de datos del archivo content, hacer split para los saltos de linea, despues para las comas y de ahi buscar los usuarios con la U
+//Tambien revisar si se escriben los datos con saltos de linea en el compilador online, que no se si funcione bien, y tambien revisar la escritura de los archivos
+//y para las particiones logicas probar utilizar el seek current o en vez del 0 utilizar el 1 que es lo mismo, aun no he echo las pruebas pero hay que intentarlo

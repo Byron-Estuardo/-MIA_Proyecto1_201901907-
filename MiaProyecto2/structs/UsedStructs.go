@@ -50,8 +50,8 @@ type InodoTable struct {
 	I_uid   uint64
 	I_gid   uint64
 	I_size  uint64
-	I_block [15]uint64
-	I_type  []byte
+	I_block [15]int64
+	I_type  [12]byte
 	I_perm  uint64
 	I_atime [20]byte
 	I_ctime [20]byte
@@ -60,7 +60,7 @@ type InodoTable struct {
 
 type Content struct {
 	B_name  [12]byte
-	B_inodo uint64
+	B_inodo int64
 }
 
 type BloqueCarpeta struct {
@@ -76,18 +76,17 @@ type BloqueApuntadores struct {
 }
 
 type Sesion struct {
-	Id_user       []byte
-	Id_grp        []byte
-	InicioSuper   []byte
-	InicioJournal []byte
-	Tipo_sistema  []byte
-	Direccion     []byte
-	Fit           []byte
+	Id_user      int64
+	Id_grp       int64
+	InicioSuper  int64
+	Tipo_sistema int64
+	Direccion    [60]byte
+	Fit          [1]byte
 }
 
 type Usuario struct {
-	Id_usr   uint64
-	Id_grp   uint64
+	Id_usr   int64
+	Id_grp   int64
 	Username [12]byte
 	Password [12]byte
 	Group    [12]byte
