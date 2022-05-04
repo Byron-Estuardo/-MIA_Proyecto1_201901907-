@@ -68,7 +68,7 @@ type BloqueCarpeta struct {
 }
 
 type BloqueArchivo struct {
-	B_content [64]byte
+	B_content [128]byte
 }
 
 type BloqueApuntadores struct {

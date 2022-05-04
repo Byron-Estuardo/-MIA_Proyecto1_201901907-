@@ -55,8 +55,7 @@ func CrearDisco(direccion string) {
 		fmt.Println(err)
 	}
 
-	var arch string = direccion
-	file, err := os.Create(arch)
+	file, err := os.Create(direccion)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -356,6 +355,13 @@ func CrearParticionPrimaria(direccion string, nombre string, size int, fit strin
 									fmt.Println(err)
 								}
 							}
+							fmt.Println("-------------------- FDISK --------------------")
+							fmt.Println("------------------ Disco Primario Creado ------------------")
+							fmt.Println("Part Status: " + string(MBR.Mbr_partition[Numero_Particion].Part_status[:]))
+							fmt.Println("Part Fit: " + string(MBR.Mbr_partition[Numero_Particion].Part_fit[:]))
+							fmt.Println("Part Start: " + string(MBR.Mbr_partition[Numero_Particion].Part_start[:]))
+							fmt.Println("Part Size: " + string(MBR.Mbr_partition[Numero_Particion].Part_size[:]))
+							fmt.Println("Part name: " + string(MBR.Mbr_partition[Numero_Particion].Part_name[:]))
 						} else if string(MBR.Mbr_disk_fit[:]) == "B" {
 							var BestIndex int = Numero_Particion
 							for i := 0; i < 4; i++ {
@@ -400,6 +406,13 @@ func CrearParticionPrimaria(direccion string, nombre string, size int, fit strin
 									fmt.Println(err)
 								}
 							}
+							fmt.Println("-------------------- FDISK --------------------")
+							fmt.Println("------------------ Disco Primario Creado ------------------")
+							fmt.Println("Part Status: " + string(MBR.Mbr_partition[BestIndex].Part_status[:]))
+							fmt.Println("Part Fit: " + string(MBR.Mbr_partition[BestIndex].Part_fit[:]))
+							fmt.Println("Part Start: " + string(MBR.Mbr_partition[BestIndex].Part_start[:]))
+							fmt.Println("Part Size: " + string(MBR.Mbr_partition[BestIndex].Part_size[:]))
+							fmt.Println("Part name: " + string(MBR.Mbr_partition[BestIndex].Part_name[:]))
 						} else if string(MBR.Mbr_disk_fit[:]) == "W" {
 							var WorstIndex int = Numero_Particion
 							for i := 0; i < 4; i++ {
@@ -445,6 +458,13 @@ func CrearParticionPrimaria(direccion string, nombre string, size int, fit strin
 									fmt.Println(err)
 								}
 							}
+							fmt.Println("-------------------- FDISK --------------------")
+							fmt.Println("------------------ Disco Primario Creado ------------------")
+							fmt.Println("Part Status: " + string(MBR.Mbr_partition[WorstIndex].Part_status[:]))
+							fmt.Println("Part Fit: " + string(MBR.Mbr_partition[WorstIndex].Part_fit[:]))
+							fmt.Println("Part Start: " + string(MBR.Mbr_partition[WorstIndex].Part_start[:]))
+							fmt.Println("Part Size: " + string(MBR.Mbr_partition[WorstIndex].Part_size[:]))
+							fmt.Println("Part name: " + string(MBR.Mbr_partition[WorstIndex].Part_name[:]))
 						}
 					} else {
 						fmt.Println("Error Ya existe una particion con ese nombre")
@@ -572,6 +592,13 @@ func CrearParticionExtendida(direccion string, nombre string, size int, fit stri
 										fmt.Println(err)
 									}
 								}
+								fmt.Println("-------------------- FDISK --------------------")
+								fmt.Println("------------------ Disco Extendido Creado ------------------")
+								fmt.Println("Part Status: " + string(MBR.Mbr_partition[Numero_Particion].Part_status[:]))
+								fmt.Println("Part Fit: " + string(MBR.Mbr_partition[Numero_Particion].Part_fit[:]))
+								fmt.Println("Part Start: " + string(MBR.Mbr_partition[Numero_Particion].Part_start[:]))
+								fmt.Println("Part Size: " + string(MBR.Mbr_partition[Numero_Particion].Part_size[:]))
+								fmt.Println("Part name: " + string(MBR.Mbr_partition[Numero_Particion].Part_name[:]))
 							} else if string(MBR.Mbr_disk_fit[:]) == "B" {
 
 								var BestIndex int = Numero_Particion
@@ -632,7 +659,13 @@ func CrearParticionExtendida(direccion string, nombre string, size int, fit stri
 										fmt.Println(err)
 									}
 								}
-
+								fmt.Println("-------------------- FDISK --------------------")
+								fmt.Println("------------------ Disco Extendido Creado ------------------")
+								fmt.Println("Part Status: " + string(MBR.Mbr_partition[BestIndex].Part_status[:]))
+								fmt.Println("Part Fit: " + string(MBR.Mbr_partition[BestIndex].Part_fit[:]))
+								fmt.Println("Part Start: " + string(MBR.Mbr_partition[BestIndex].Part_start[:]))
+								fmt.Println("Part Size: " + string(MBR.Mbr_partition[BestIndex].Part_size[:]))
+								fmt.Println("Part name: " + string(MBR.Mbr_partition[BestIndex].Part_name[:]))
 							} else if string(MBR.Mbr_disk_fit[:]) == "W" {
 								var WorstIndex int = Numero_Particion
 								for i := 0; i < 4; i++ {
@@ -692,6 +725,13 @@ func CrearParticionExtendida(direccion string, nombre string, size int, fit stri
 										fmt.Println(err)
 									}
 								}
+								fmt.Println("-------------------- FDISK --------------------")
+								fmt.Println("------------------ Disco Extendido Creado ------------------")
+								fmt.Println("Part Status: " + string(MBR.Mbr_partition[WorstIndex].Part_status[:]))
+								fmt.Println("Part Fit: " + string(MBR.Mbr_partition[WorstIndex].Part_fit[:]))
+								fmt.Println("Part Start: " + string(MBR.Mbr_partition[WorstIndex].Part_start[:]))
+								fmt.Println("Part Size: " + string(MBR.Mbr_partition[WorstIndex].Part_size[:]))
+								fmt.Println("Part name: " + string(MBR.Mbr_partition[WorstIndex].Part_name[:]))
 							}
 						}
 					}
@@ -768,6 +808,25 @@ func EXT2(inicio int, tamano int, direccion string) {
 	if errs != nil {
 		fmt.Println("ERROR WE")
 	}
+	fmt.Println("-------------------- Super Bloque --------------------")
+	fmt.Println("S_filesystem_type: " + string(rune(super.S_filesystem_type)))
+	fmt.Println("S_inodes_count: " + string(rune(super.S_inodes_count)))
+	fmt.Println("S_blocks_count: " + string(rune(super.S_blocks_count)))
+	fmt.Println("S_free_blocks_count: " + string(rune(super.S_free_blocks_count)))
+	fmt.Println("S_free_inodes_count: " + string(rune(super.S_free_inodes_count)))
+	fmt.Println("S_mtime: " + string(super.S_mtime[:]))
+	fmt.Println("S_umtime: " + string(super.S_umtime[:]))
+	fmt.Println("S_mnt_count: " + string(rune(super.S_mnt_count)))
+	fmt.Println("S_magic: " + string("0xEF53"))
+	fmt.Println("S_inode_size: " + string(rune(super.S_inode_size)))
+	fmt.Println("S_block_size: " + string(rune(super.S_block_size)))
+	fmt.Println("S_first_ino: " + string(rune(super.S_first_ino)))
+	fmt.Println("S_first_blo: " + string(rune(super.S_first_blo)))
+	fmt.Println("S_bm_inode_start: " + string(rune(super.S_bm_inode_start)))
+	fmt.Println("S_bm_block_start: " + string(rune(super.S_bm_block_start)))
+	fmt.Println("S_inode_start: " + string(rune(super.S_inode_start)))
+	fmt.Println("S_block_start: " + string(rune(super.S_block_start)))
+
 	/* -----------BitMap de Inodos------------- */
 	s := &buffer
 	var binario bytes.Buffer
@@ -836,6 +895,15 @@ func EXT2(inicio int, tamano int, direccion string) {
 	if errsSI != nil {
 		fmt.Println("ERROR WE")
 	}
+	fmt.Println("-------------------- Inodo Carpeta Root --------------------")
+	fmt.Println("I_uid: " + string(rune(inodo.I_uid)))
+	fmt.Println("I_gid: " + string(rune(inodo.I_gid)))
+	fmt.Println("I_size: " + string(rune(inodo.I_size)))
+	fmt.Println("I_type: " + string(inodo.I_type[:]))
+	fmt.Println("I_perm: " + string(rune(inodo.I_perm)))
+	fmt.Println("I_atime: " + string(inodo.I_atime[:]))
+	fmt.Println("I_ctime: " + string(inodo.I_ctime[:]))
+	fmt.Println("I_mtime: " + string(inodo.I_mtime[:]))
 	/* -----------Bloque para la carpeta root------------- */
 	copy(bloque.B_content[0].B_name[:], ".")
 	bloque.B_content[0].B_inodo = 0
@@ -877,6 +945,15 @@ func EXT2(inicio int, tamano int, direccion string) {
 	if errs2 != nil {
 		fmt.Println("ERROR WE")
 	}
+	fmt.Println("-------------------- Inodo Carpeta users.txt --------------------")
+	fmt.Println("I_uid: " + string(rune(inodo.I_uid)))
+	fmt.Println("I_gid: " + string(rune(inodo.I_gid)))
+	fmt.Println("I_size: " + string(rune(inodo.I_size)))
+	fmt.Println("I_type: " + string(inodo.I_type[:]))
+	fmt.Println("I_perm: " + string(rune(inodo.I_perm)))
+	fmt.Println("I_atime: " + string(inodo.I_atime[:]))
+	fmt.Println("I_ctime: " + string(inodo.I_ctime[:]))
+	fmt.Println("I_mtime: " + string(inodo.I_mtime[:]))
 	/* -----------Bloque para users.txt------------- */
 	archivo := structs.BloqueArchivo{}
 	copy(archivo.B_content[:], "1,G,root\n1,U,root,root,123\n")
@@ -888,11 +965,13 @@ func EXT2(inicio int, tamano int, direccion string) {
 	if errs3 != nil {
 		fmt.Println("ERROR WE")
 	}
+	fmt.Println("-------------------- Bloque Users.txt --------------------")
+	fmt.Println("B_content: 1,G,root\n1,U,root,root,123")
+
 }
 
 // mkdisk("5", "wf", "m", "/home/curious1924/Escritorio/Joder/disco3.dk")
 func Mkdisk(size string, fit string, unit string, path string) {
-	fmt.Println("Que pdo!!!")
 	var BanderaSize bool = false
 	var BanderaFit bool = false
 	var BanderaUnit bool = false
@@ -945,14 +1024,10 @@ func Mkdisk(size string, fit string, unit string, path string) {
 				total_size := 1024
 				CrearDisco(ValPath)
 				fechas := ObtenerFecha()
-				//fmt.Println("Fecha")
 				copy(MBR.Mbr_date_created[:], string(fechas))
-				//fmt.Println(string(fechas))
-				//fmt.Println(string(MBR.Mbr_date_created[:]))
 				rand.Seed(int64(time.Now().UnixNano()))
 				nuevoNumero := rand.Int()
 				nuevs := strconv.Itoa(nuevoNumero)
-				//fmt.Println(nuevs)
 				copy(MBR.Mbr_disk_signature[:], nuevs)
 				if BanderaUnit {
 					if ValUnit == "m" {
@@ -1006,8 +1081,18 @@ func Mkdisk(size string, fit string, unit string, path string) {
 				for i := 0; i < total_size; i++ {
 					EscribirBytes(file, binario.Bytes())
 				}
-
+				fmt.Println("Disco creado con exito!")
+				fmt.Println("-------------------- MKDISK --------------------")
+				fmt.Println("------------------ Disco Creado ------------------")
+				fmt.Println("MBR Size: " + string(MBR.Mbr_size[:]))
+				fmt.Println("MBR Date Created: " + string(MBR.Mbr_date_created[:]))
+				fmt.Println("MBR disk signature: " + string(MBR.Mbr_disk_signature[:]))
+				fmt.Println("MBR disk fit: " + string(MBR.Mbr_disk_fit[:]))
+			} else {
+				fmt.Println("ERROR Parametro -size no definido ")
 			}
+		} else {
+			fmt.Println("ERROR Parametro -path no definido ")
 		}
 	}
 }
@@ -1018,6 +1103,7 @@ func Rmdisk(path string) {
 	comando, _ := reader.ReadString('\n')
 	if strings.Contains(comando, "S\n") || strings.Contains(comando, "s\n") {
 		_ = os.Remove(path)
+		fmt.Println("-------------------- RMDISK --------------------")
 		fmt.Println("Disco eliminado con exito!")
 	} else if strings.Contains(comando, "N\n") || strings.Contains(comando, "n\n") {
 		fmt.Println("Cancelado con exito!")
@@ -1254,6 +1340,878 @@ func LogOut() {
 	}
 }
 
-//para la validacion de datos del archivo content, hacer split para los saltos de linea, despues para las comas y de ahi buscar los usuarios con la U
-//Tambien revisar si se escriben los datos con saltos de linea en el compilador online, que no se si funcione bien, y tambien revisar la escritura de los archivos
-//y para las particiones logicas probar utilizar el seek current o en vez del 0 utilizar el 1 que es lo mismo, aun no he echo las pruebas pero hay que intentarlo
+func getc(f *os.File) (byte, error) {
+	b := make([]byte, 1)
+	_, err := f.Read(b)
+	return b[0], err
+}
+
+func BuscarExisteGrupo(name string) int {
+	file, _ := os.OpenFile(string(CurrentSession.Direccion[:]), os.O_RDWR, 0777)
+	defer file.Close()
+	var cadena string = ""
+	super := structs.SuperBloque{}
+	inodo := structs.InodoTable{}
+
+	file.Seek(CurrentSession.InicioSuper, 0)
+	TempSB := structs.SuperBloque{}
+	var sizetemp int = int(unsafe.Sizeof(TempSB))
+	data := leerBytes(file, sizetemp)
+	buffer := bytes.NewBuffer(data)
+	Errores := binary.Read(buffer, binary.BigEndian, &super)
+	if Errores != nil {
+		fmt.Println("F perro")
+	}
+
+	file.Seek(CurrentSession.InicioSuper, 0)
+	TempTI := structs.SuperBloque{}
+	var sizetemp1 int = int(unsafe.Sizeof(TempTI))
+	data1 := leerBytes(file, sizetemp1)
+	buffer1 := bytes.NewBuffer(data1)
+	Errores1 := binary.Read(buffer1, binary.BigEndian, &inodo)
+	if Errores1 != nil {
+		fmt.Println("F perro")
+	}
+
+	for i := 0; i < 15; i++ {
+		if inodo.I_block[i] != -1 {
+			archivo := structs.BloqueArchivo{}
+			file.Seek(int64(super.S_block_start), 0)
+			for j := 0; j <= int(inodo.I_block[i]); j++ {
+				temparchivo := structs.BloqueArchivo{}
+				var sizetemp2 int = int(unsafe.Sizeof(temparchivo))
+				data2 := leerBytes(file, sizetemp2)
+				buffer2 := bytes.NewBuffer(data2)
+				Errores2 := binary.Read(buffer2, binary.BigEndian, &archivo)
+				if Errores2 != nil {
+					fmt.Println("F perro")
+				}
+			}
+			cadena += string(archivo.B_content[:])
+		}
+	}
+	token := strings.Split(cadena, "\n")
+	for i := 0; i < len(token); i++ {
+		id := ""
+		tipo := ""
+		group := ""
+		token2 := strings.Split(token[i], ",")
+		for i := 0; i < len(token2); i++ {
+			id = token2[0]
+			if id != "0" {
+				tipo = token2[1]
+				if tipo == "G" {
+					group = token2[2]
+					if strings.Compare(group, name) == 0 {
+						idEnvio, _ := strconv.Atoi(id)
+						return idEnvio
+					}
+				}
+			}
+		}
+	}
+	return -1
+}
+
+func BuscarExisteUsuario(name string) bool {
+	file, _ := os.OpenFile(string(CurrentSession.Direccion[:]), os.O_RDWR, 0777)
+	defer file.Close()
+	var cadena string = ""
+	super := structs.SuperBloque{}
+	inodo := structs.InodoTable{}
+
+	file.Seek(CurrentSession.InicioSuper, 0)
+	TempSB := structs.SuperBloque{}
+	var sizetemp int = int(unsafe.Sizeof(TempSB))
+	data := leerBytes(file, sizetemp)
+	buffer := bytes.NewBuffer(data)
+	Errores := binary.Read(buffer, binary.BigEndian, &super)
+	if Errores != nil {
+		fmt.Println("F perro")
+	}
+
+	file.Seek(CurrentSession.InicioSuper, 0)
+	TempTI := structs.SuperBloque{}
+	var sizetemp1 int = int(unsafe.Sizeof(TempTI))
+	data1 := leerBytes(file, sizetemp1)
+	buffer1 := bytes.NewBuffer(data1)
+	Errores1 := binary.Read(buffer1, binary.BigEndian, &inodo)
+	if Errores1 != nil {
+		fmt.Println("F perro")
+	}
+
+	for i := 0; i < 15; i++ {
+		if inodo.I_block[i] != -1 {
+			archivo := structs.BloqueArchivo{}
+			file.Seek(int64(super.S_block_start), 0)
+			for j := 0; j <= int(inodo.I_block[i]); j++ {
+				temparchivo := structs.BloqueArchivo{}
+				var sizetemp2 int = int(unsafe.Sizeof(temparchivo))
+				data2 := leerBytes(file, sizetemp2)
+				buffer2 := bytes.NewBuffer(data2)
+				Errores2 := binary.Read(buffer2, binary.BigEndian, &archivo)
+				if Errores2 != nil {
+					fmt.Println("F perro")
+				}
+			}
+			cadena += string(archivo.B_content[:])
+		}
+	}
+	token := strings.Split(cadena, "\n")
+	for i := 0; i < len(token); i++ {
+		id := ""
+		tipo := ""
+		usuario := ""
+		token2 := strings.Split(token[i], ",")
+		for i := 0; i < len(token2); i++ {
+			id = token2[0]
+			if id != "0" {
+				tipo = token2[1]
+				if tipo == "U" {
+					usuario = token2[3]
+					if strings.Compare(usuario, name) == 0 {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
+func GetId_Grp() int {
+	file, _ := os.OpenFile(string(CurrentSession.Direccion[:]), os.O_RDWR, 0777)
+	defer file.Close()
+	var cadena string = ""
+	var aux_id int = -1
+	super := structs.SuperBloque{}
+	inodo := structs.InodoTable{}
+
+	file.Seek(CurrentSession.InicioSuper, 0)
+	TempSB := structs.SuperBloque{}
+	var sizetemp int = int(unsafe.Sizeof(TempSB))
+	data := leerBytes(file, sizetemp)
+	buffer := bytes.NewBuffer(data)
+	Errores := binary.Read(buffer, binary.BigEndian, &super)
+	if Errores != nil {
+		fmt.Println("F perro")
+	}
+
+	file.Seek(CurrentSession.InicioSuper, 0)
+	TempTI := structs.SuperBloque{}
+	var sizetemp1 int = int(unsafe.Sizeof(TempTI))
+	data1 := leerBytes(file, sizetemp1)
+	buffer1 := bytes.NewBuffer(data1)
+	Errores1 := binary.Read(buffer1, binary.BigEndian, &inodo)
+	if Errores1 != nil {
+		fmt.Println("F perro")
+	}
+
+	for i := 0; i < 15; i++ {
+		if inodo.I_block[i] != -1 {
+			archivo := structs.BloqueArchivo{}
+			file.Seek(int64(super.S_block_start), 0)
+			for j := 0; j <= int(inodo.I_block[i]); j++ {
+				temparchivo := structs.BloqueArchivo{}
+				var sizetemp2 int = int(unsafe.Sizeof(temparchivo))
+				data2 := leerBytes(file, sizetemp2)
+				buffer2 := bytes.NewBuffer(data2)
+				Errores2 := binary.Read(buffer2, binary.BigEndian, &archivo)
+				if Errores2 != nil {
+					fmt.Println("F perro")
+				}
+			}
+			cadena += string(archivo.B_content[:])
+		}
+	}
+	token := strings.Split(cadena, "\n")
+	for i := 0; i < len(token); i++ {
+		id := ""
+		tipo := ""
+		token2 := strings.Split(token[i], ",")
+		for i := 0; i < len(token2); i++ {
+			id = token2[0]
+			if id != "0" {
+				tipo = token2[1]
+				if tipo == "G" {
+					enviowe, _ := strconv.Atoi(id)
+					aux_id = enviowe
+
+				}
+			}
+		}
+	}
+	aux_id += 1
+	return aux_id
+}
+
+func GetId_User() int {
+	file, _ := os.OpenFile(string(CurrentSession.Direccion[:]), os.O_RDWR, 0777)
+	defer file.Close()
+	var cadena string = ""
+	var aux_id int = 0
+	super := structs.SuperBloque{}
+	inodo := structs.InodoTable{}
+
+	file.Seek(CurrentSession.InicioSuper, 0)
+	TempSB := structs.SuperBloque{}
+	var sizetemp int = int(unsafe.Sizeof(TempSB))
+	data := leerBytes(file, sizetemp)
+	buffer := bytes.NewBuffer(data)
+	Errores := binary.Read(buffer, binary.BigEndian, &super)
+	if Errores != nil {
+		fmt.Println("F perro")
+	}
+
+	file.Seek(CurrentSession.InicioSuper, 0)
+	TempTI := structs.SuperBloque{}
+	var sizetemp1 int = int(unsafe.Sizeof(TempTI))
+	data1 := leerBytes(file, sizetemp1)
+	buffer1 := bytes.NewBuffer(data1)
+	Errores1 := binary.Read(buffer1, binary.BigEndian, &inodo)
+	if Errores1 != nil {
+		fmt.Println("F perro")
+	}
+
+	for i := 0; i < 15; i++ {
+		if inodo.I_block[i] != -1 {
+			archivo := structs.BloqueArchivo{}
+			file.Seek(int64(super.S_block_start), 0)
+			for j := 0; j <= int(inodo.I_block[i]); j++ {
+				temparchivo := structs.BloqueArchivo{}
+				var sizetemp2 int = int(unsafe.Sizeof(temparchivo))
+				data2 := leerBytes(file, sizetemp2)
+				buffer2 := bytes.NewBuffer(data2)
+				Errores2 := binary.Read(buffer2, binary.BigEndian, &archivo)
+				if Errores2 != nil {
+					fmt.Println("F perro")
+				}
+			}
+			cadena += string(archivo.B_content[:])
+		}
+	}
+	token := strings.Split(cadena, "\n")
+	for i := 0; i < len(token); i++ {
+		id := ""
+		tipo := ""
+		token2 := strings.Split(token[i], ",")
+		for i := 0; i < len(token2); i++ {
+			id = token2[0]
+			if id != "0" {
+				tipo = token2[1]
+				if tipo == "U" {
+					enviowe, _ := strconv.Atoi(id)
+					aux_id = enviowe + 1
+
+				}
+			}
+		}
+	}
+	aux_id += 1
+	return aux_id
+}
+
+func VerificarDatos(user string, password string, direccion string) int {
+	file, _ := os.OpenFile(direccion, os.O_RDWR, 0777)
+	defer file.Close()
+	var cadena string = ""
+	super := structs.SuperBloque{}
+	inodo := structs.InodoTable{}
+
+	file.Seek(CurrentSession.InicioSuper, 0)
+	TempSB := structs.SuperBloque{}
+	var sizetemp int = int(unsafe.Sizeof(TempSB))
+	data := leerBytes(file, sizetemp)
+	buffer := bytes.NewBuffer(data)
+	Errores := binary.Read(buffer, binary.BigEndian, &super)
+	if Errores != nil {
+		fmt.Println("F perro")
+	}
+
+	file.Seek(int64(super.S_inode_start+uint64(unsafe.Sizeof(structs.InodoTable{}))), 0)
+	TempTI := structs.InodoTable{}
+	var sizetemp1 int = int(unsafe.Sizeof(TempTI))
+	data1 := leerBytes(file, sizetemp1)
+	buffer1 := bytes.NewBuffer(data1)
+	Errores1 := binary.Read(buffer1, binary.BigEndian, &inodo)
+	if Errores1 != nil {
+		fmt.Println("F perro")
+	}
+
+	for i := 0; i < 15; i++ {
+		if inodo.I_block[i] != -1 {
+			archivo := structs.BloqueArchivo{}
+			file.Seek(int64(super.S_block_start), 0)
+			for j := 0; j <= int(inodo.I_block[i]); j++ {
+				temparchivo := structs.BloqueArchivo{}
+				var sizetemp2 int = int(unsafe.Sizeof(temparchivo))
+				data2 := leerBytes(file, sizetemp2)
+				buffer2 := bytes.NewBuffer(data2)
+				Errores2 := binary.Read(buffer2, binary.BigEndian, &archivo)
+				if Errores2 != nil {
+					fmt.Println("F perro")
+				}
+			}
+			cadena += string(archivo.B_content[:])
+		}
+	}
+	token := strings.Split(cadena, "\n")
+	for i := 0; i < len(token); i++ {
+		id := ""
+		tipo := ""
+		group := ""
+		user_ := ""
+		password_ := ""
+		fmt.Println(token[i])
+		token2 := strings.Split(token[i], ",")
+		for i := 0; i < len(token2); i++ {
+			id = token2[0]
+			if id != "0" {
+				tipo = token2[1]
+				if tipo == "U" {
+					group = token2[2]
+					user_ = token2[3]
+					password_ = token2[4]
+					if strings.Compare(user_, user) == 0 {
+						if strings.Compare(password_, password) == 0 {
+							idEnvio, _ := strconv.Atoi(id)
+							copy(CurrentSession.Direccion[:], []byte(direccion))
+							CurrentSession.Id_user = int64(idEnvio)
+							CurrentSession.Id_grp = int64(BuscarExisteGrupo(group))
+							return 1
+						} else {
+							return 2
+						}
+					}
+				} else {
+					break
+				}
+			} else {
+				break
+			}
+		}
+	}
+	return 2
+}
+
+func PreLogin(direccion string, nombre string, user string, password string) int {
+	var index int = BuscarParticion_Primaria_Extendida(direccion, nombre)
+	if index != 0 {
+		MBR := structs.MBR{}
+		super := structs.SuperBloque{}
+		inodo := structs.InodoTable{}
+		file, _ := os.OpenFile(string(CurrentSession.Direccion[:]), os.O_RDWR, 0777)
+		defer file.Close()
+
+		file.Seek(0, 0)
+		TempMBR := structs.MBR{}
+		var sizetempMBR int = int(unsafe.Sizeof(TempMBR))
+		data := leerBytes(file, sizetempMBR)
+		buffer := bytes.NewBuffer(data)
+		Errores := binary.Read(buffer, binary.BigEndian, &MBR)
+		if Errores != nil {
+			fmt.Println("F perro")
+		}
+
+		PartStartMBR, _ := strconv.Atoi(string(MBR.Mbr_partition[index].Part_start[:]))
+		file.Seek(int64(PartStartMBR), 0)
+		Tempsuper := structs.SuperBloque{}
+		var sizetempsuper int = int(unsafe.Sizeof(Tempsuper))
+		datasuper := leerBytes(file, sizetempsuper)
+		buffersuper := bytes.NewBuffer(datasuper)
+		Erroressuper := binary.Read(buffersuper, binary.BigEndian, &super)
+		if Erroressuper != nil {
+			fmt.Println("F perro")
+		}
+
+		file.Seek(int64(super.S_bm_inode_start+uint64(unsafe.Sizeof(structs.InodoTable{}))), 0)
+		TempInodeTable := structs.SuperBloque{}
+		var sizetempInodeTable int = int(unsafe.Sizeof(TempInodeTable))
+		dataInodeTable := leerBytes(file, sizetempInodeTable)
+		bufferInodeTable := bytes.NewBuffer(dataInodeTable)
+		ErroresInodeTable := binary.Read(bufferInodeTable, binary.BigEndian, &inodo)
+		if ErroresInodeTable != nil {
+			fmt.Println("F perro")
+		}
+		file.Seek(int64(super.S_bm_inode_start+uint64(unsafe.Sizeof(structs.InodoTable{}))), 0)
+		copy(inodo.I_mtime[:], ObtenerFecha())
+		var bufferControl2 bytes.Buffer
+		binary.Write(&bufferControl2, binary.BigEndian, &inodo)
+		_, errs2 := file.Write(bufferControl2.Bytes())
+		if errs2 != nil {
+			fmt.Println("ERROR WE")
+		}
+		currentSessionInicioSuper, _ := strconv.Atoi(string(MBR.Mbr_partition[index].Part_start[:]))
+		CurrentSession.InicioSuper = int64(currentSessionInicioSuper)
+		CurrentSession.Fit = MBR.Mbr_partition[index].Part_fit
+		CurrentSession.Tipo_sistema = 2
+		return VerificarDatos(user, password, direccion)
+	}
+	return -1
+}
+
+func Login(users string, passwords string, ids string) {
+	var BanderaUser bool = false
+	var BanderaPassword bool = false
+	var BanderaID bool = false
+	var Bandera bool = false
+	var user string = ""
+	var password string = ""
+	var id string = ""
+
+	if users != "" {
+		BanderaUser = true
+		user = users
+
+	} else {
+		Bandera = true
+	}
+	if passwords != "" {
+		BanderaPassword = true
+		password = passwords
+
+	} else {
+		Bandera = true
+	}
+	if ids != "" {
+		BanderaID = true
+		id = ids
+
+	} else {
+		Bandera = true
+	}
+	if !Bandera {
+		if BanderaUser {
+			if BanderaPassword {
+				if BanderaID {
+					if !BanderaLogin {
+						for i := len(ListaMount) - 1; i >= 0; i-- {
+							nuevoNodo := NodoMount{}
+							if ListaMount[i].id == id {
+								nuevoNodo = ListaMount[i]
+							}
+							if nuevoNodo.id != "" {
+								res := PreLogin(nuevoNodo.direccion, nuevoNodo.nombre, user, password)
+								if res == 1 {
+									BanderaLogin = true
+									fmt.Println("Sesion iniciada con exito")
+								} else if res == 2 {
+									fmt.Println("ERROR Contrasena incorrecta")
+								} else if res == 0 {
+									fmt.Println("ERROR Usuario no encontrado")
+								} else {
+									fmt.Println("ERROR Desconocido")
+								}
+							} else {
+								fmt.Println("ERROR no se encuentra ninguna particion montada con ese id ")
+							}
+						}
+					} else {
+						fmt.Println("ERROR sesion activa, cierre sesion para poder volver a iniciar sesion")
+					}
+				} else {
+					fmt.Println("ERROR parametro -id no definido")
+				}
+			} else {
+				fmt.Println("ERROR parametro -password no definido")
+			}
+		} else {
+			fmt.Println("ERROR parametro -usuario no definido")
+		}
+	}
+}
+
+func Mkusr(name string, passwords string, group string) {
+	var BanderaUser bool = false
+	var BanderaPassword bool = false
+	var BanderaGroup bool = false
+	var ReEscritura string = ""
+	var users string = ""
+	var password string = ""
+	var groups string = ""
+	if name != "" {
+		BanderaUser = true
+		users = name
+	}
+	if passwords != "" {
+		BanderaPassword = true
+		password = passwords
+	}
+	if group != "" {
+		BanderaGroup = true
+		groups = group
+	}
+	if BanderaUser {
+		if BanderaPassword {
+			if BanderaGroup {
+				if len(users) <= 10 {
+					if len(password) <= 10 {
+						if len(groups) <= 10 {
+							if BanderaLogin {
+								if CurrentSession.Id_user == 1 && CurrentSession.Id_grp == 1 {
+									grupo := BuscarExisteGrupo(name)
+									if grupo != -1 {
+										usuarios := BuscarExisteUsuario(name)
+										if !usuarios {
+											idUser := GetId_User()
+											file, _ := os.OpenFile(string(CurrentSession.Direccion[:]), os.O_RDWR, 0777)
+											defer file.Close()
+											var cadena string = ""
+											super := structs.SuperBloque{}
+											inodo := structs.InodoTable{}
+
+											file.Seek(CurrentSession.InicioSuper, 0)
+											TempSB := structs.SuperBloque{}
+											var sizetemp int = int(unsafe.Sizeof(TempSB))
+											data := leerBytes(file, sizetemp)
+											buffer := bytes.NewBuffer(data)
+											Errores := binary.Read(buffer, binary.BigEndian, &super)
+											if Errores != nil {
+												fmt.Println("F perro")
+											}
+
+											file.Seek(CurrentSession.InicioSuper, 0)
+											TempTI := structs.SuperBloque{}
+											var sizetemp1 int = int(unsafe.Sizeof(TempTI))
+											data1 := leerBytes(file, sizetemp1)
+											buffer1 := bytes.NewBuffer(data1)
+											Errores1 := binary.Read(buffer1, binary.BigEndian, &inodo)
+											if Errores1 != nil {
+												fmt.Println("F perro")
+											}
+
+											for i := 0; i < 15; i++ {
+												if inodo.I_block[i] != -1 {
+													archivo := structs.BloqueArchivo{}
+													file.Seek(int64(super.S_block_start), 0)
+													for j := 0; j <= int(inodo.I_block[i]); j++ {
+														temparchivo := structs.BloqueArchivo{}
+														var sizetemp2 int = int(unsafe.Sizeof(temparchivo))
+														data2 := leerBytes(file, sizetemp2)
+														buffer2 := bytes.NewBuffer(data2)
+														Errores2 := binary.Read(buffer2, binary.BigEndian, &archivo)
+														if Errores2 != nil {
+															fmt.Println("F perro")
+														}
+													}
+													cadena += string(archivo.B_content[:])
+												}
+											}
+											nuevoId := strconv.Itoa(idUser)
+											NuevVar := nuevoId + ",U," + groups + "," + users + "," + password + "\n"
+											ReEscritura = cadena + NuevVar
+											libre := 127 - len(cadena)
+											if len(NuevVar) <= libre {
+												archivo := structs.BloqueArchivo{}
+												copy(archivo.B_content[:], ReEscritura)
+												sizesBloqueCarpeta := uint64(unsafe.Sizeof(structs.BloqueCarpeta{}))
+												file.Seek(int64(super.S_inode_start+sizesBloqueCarpeta), 0)
+												var bufferControl3 bytes.Buffer
+												binary.Write(&bufferControl3, binary.BigEndian, &archivo)
+												_, errs3 := file.Write(bufferControl3.Bytes())
+												if errs3 != nil {
+													fmt.Println("ERROR WE")
+												}
+												fmt.Println("Usuario Creado con Exito")
+												fmt.Println("------------------users.txt------------------")
+												fmt.Println(ReEscritura)
+											} else {
+												fmt.Println("ERROR no se puede escribir ya que sobrepasa el tamano pre establecido")
+											}
+										} else {
+											fmt.Println("ERROR ya existe un usuario con ese nombre")
+										}
+									} else {
+										fmt.Println("ERROR ya existe un grupo con ese nombre")
+									}
+								} else {
+									fmt.Println("ERROR solo el usuario root puede ejecutar este comando")
+								}
+							} else {
+								fmt.Println("ERROR necesita iniciar sesion para poder ejecutar este comando")
+							}
+						} else {
+							fmt.Println("ERROR grupo del usuario excede de los 10 caracteres permitidos")
+						}
+					} else {
+						fmt.Println("ERROR contrasena de usuario excede de los 10 caracteres permitidos")
+					}
+				} else {
+					fmt.Println("ERROR nombre de usuario excede de los 10 caracteres permitidos")
+				}
+			} else {
+				fmt.Println("ERROR nombre de usuario excede de los 10 caracteres permitidos")
+			}
+		} else {
+			fmt.Println("ERROR parametro -pwd no definido")
+		}
+	} else {
+		fmt.Println("ERROR parametro -usuario no definido ")
+	}
+}
+
+func RMkusr(name string) {
+	var ReEscritura string = ""
+	if BanderaLogin {
+		if CurrentSession.Id_user == 1 && CurrentSession.Id_grp == 1 {
+			grupo := BuscarExisteGrupo(name)
+			if grupo != -1 {
+				usuarios := BuscarExisteUsuario(name)
+				if !usuarios {
+					file, _ := os.OpenFile(string(CurrentSession.Direccion[:]), os.O_RDWR, 0777)
+					defer file.Close()
+					var cadena string = ""
+					super := structs.SuperBloque{}
+					inodo := structs.InodoTable{}
+
+					file.Seek(CurrentSession.InicioSuper, 0)
+					TempSB := structs.SuperBloque{}
+					var sizetemp int = int(unsafe.Sizeof(TempSB))
+					data := leerBytes(file, sizetemp)
+					buffer := bytes.NewBuffer(data)
+					Errores := binary.Read(buffer, binary.BigEndian, &super)
+					if Errores != nil {
+						fmt.Println("F perro")
+					}
+
+					file.Seek(CurrentSession.InicioSuper, 0)
+					TempTI := structs.SuperBloque{}
+					var sizetemp1 int = int(unsafe.Sizeof(TempTI))
+					data1 := leerBytes(file, sizetemp1)
+					buffer1 := bytes.NewBuffer(data1)
+					Errores1 := binary.Read(buffer1, binary.BigEndian, &inodo)
+					if Errores1 != nil {
+						fmt.Println("F perro")
+					}
+
+					for i := 0; i < 15; i++ {
+						if inodo.I_block[i] != -1 {
+							archivo := structs.BloqueArchivo{}
+							file.Seek(int64(super.S_block_start), 0)
+							for j := 0; j <= int(inodo.I_block[i]); j++ {
+								temparchivo := structs.BloqueArchivo{}
+								var sizetemp2 int = int(unsafe.Sizeof(temparchivo))
+								data2 := leerBytes(file, sizetemp2)
+								buffer2 := bytes.NewBuffer(data2)
+								Errores2 := binary.Read(buffer2, binary.BigEndian, &archivo)
+								if Errores2 != nil {
+									fmt.Println("F perro")
+								}
+							}
+							cadena += string(archivo.B_content[:])
+						}
+					}
+					token := strings.Split(cadena, "\n")
+					for i := 0; i < len(token); i++ {
+						usuario := ""
+						token2 := strings.Split(token[i], ",")
+						for i := 0; i < len(token2); i++ {
+							if token2[1] == "U" {
+								usuario = token2[3]
+								if strings.Compare(usuario, name) == 0 {
+									NuevVar := "0" + ",U," + token2[2] + "," + token2[3] + "," + token2[4] + "\n"
+									ReEscritura += NuevVar
+
+								} else {
+									str2 := strings.Join(token2, " ")
+									ReEscritura += str2 + "\n"
+								}
+							} else {
+								str2 := strings.Join(token2, " ")
+								ReEscritura += str2 + "\n"
+							}
+						}
+					}
+					archivo := structs.BloqueArchivo{}
+					copy(archivo.B_content[:], ReEscritura)
+					sizesBloqueCarpeta := uint64(unsafe.Sizeof(structs.BloqueCarpeta{}))
+					file.Seek(int64(super.S_inode_start+sizesBloqueCarpeta), 0)
+					var bufferControl3 bytes.Buffer
+					binary.Write(&bufferControl3, binary.BigEndian, &archivo)
+					_, errs3 := file.Write(bufferControl3.Bytes())
+					if errs3 != nil {
+						fmt.Println("ERROR WE")
+					}
+					fmt.Println("Usuario Creado con Exito")
+					fmt.Println("------------------users.txt------------------")
+					fmt.Println(ReEscritura)
+				} else {
+					fmt.Println("ERROR ya existe un usuario con ese nombre")
+				}
+			} else {
+				fmt.Println("ERROR ya existe un grupo con ese nombre")
+			}
+		} else {
+			fmt.Println("ERROR solo el usuario root puede ejecutar este comando")
+		}
+	} else {
+		fmt.Println("ERROR necesita iniciar sesion para poder ejecutar este comando")
+	}
+}
+
+func Mkgrp(name string) {
+	var ReEscritura string = ""
+	if BanderaLogin {
+		if CurrentSession.Id_user == 1 && CurrentSession.Id_grp == 1 {
+			grupo := BuscarExisteGrupo(name)
+			if grupo == -1 {
+				idGro := GetId_Grp()
+				file, _ := os.OpenFile(string(CurrentSession.Direccion[:]), os.O_RDWR, 0777)
+				defer file.Close()
+				var cadena string = ""
+				super := structs.SuperBloque{}
+				inodo := structs.InodoTable{}
+
+				file.Seek(CurrentSession.InicioSuper, 0)
+				TempSB := structs.SuperBloque{}
+				var sizetemp int = int(unsafe.Sizeof(TempSB))
+				data := leerBytes(file, sizetemp)
+				buffer := bytes.NewBuffer(data)
+				Errores := binary.Read(buffer, binary.BigEndian, &super)
+				if Errores != nil {
+					fmt.Println("F perro")
+				}
+
+				file.Seek(CurrentSession.InicioSuper, 0)
+				TempTI := structs.SuperBloque{}
+				var sizetemp1 int = int(unsafe.Sizeof(TempTI))
+				data1 := leerBytes(file, sizetemp1)
+				buffer1 := bytes.NewBuffer(data1)
+				Errores1 := binary.Read(buffer1, binary.BigEndian, &inodo)
+				if Errores1 != nil {
+					fmt.Println("F perro")
+				}
+
+				for i := 0; i < 15; i++ {
+					if inodo.I_block[i] != -1 {
+						archivo := structs.BloqueArchivo{}
+						file.Seek(int64(super.S_block_start), 0)
+						for j := 0; j <= int(inodo.I_block[i]); j++ {
+							temparchivo := structs.BloqueArchivo{}
+							var sizetemp2 int = int(unsafe.Sizeof(temparchivo))
+							data2 := leerBytes(file, sizetemp2)
+							buffer2 := bytes.NewBuffer(data2)
+							Errores2 := binary.Read(buffer2, binary.BigEndian, &archivo)
+							if Errores2 != nil {
+								fmt.Println("F perro")
+							}
+						}
+						cadena += string(archivo.B_content[:])
+					}
+				}
+				nuevoId := strconv.Itoa(idGro)
+				NuevVar := nuevoId + ",G," + name + "\n"
+				ReEscritura = cadena + NuevVar
+				libre := 127 - len(cadena)
+				if len(NuevVar) <= libre {
+					archivo := structs.BloqueArchivo{}
+					copy(archivo.B_content[:], ReEscritura)
+					sizesBloqueCarpeta := uint64(unsafe.Sizeof(structs.BloqueCarpeta{}))
+					file.Seek(int64(super.S_inode_start+sizesBloqueCarpeta), 0)
+					var bufferControl3 bytes.Buffer
+					binary.Write(&bufferControl3, binary.BigEndian, &archivo)
+					_, errs3 := file.Write(bufferControl3.Bytes())
+					if errs3 != nil {
+						fmt.Println("ERROR WE")
+					}
+					fmt.Println("Grupo Creado con Exito")
+					fmt.Println("------------------users.txt------------------")
+					fmt.Println(ReEscritura)
+				} else {
+					fmt.Println("ERROR no se puede escribir ya que sobrepasa el tamano pre establecido")
+				}
+
+			} else {
+				fmt.Println("ERROR ya existe un grupo con ese nombre")
+			}
+		} else {
+			fmt.Println("ERROR solo el usuario root puede ejecutar este comando")
+		}
+	} else {
+		fmt.Println("ERROR necesita iniciar sesion para poder ejecutar este comando")
+	}
+}
+
+func RMkgrp(name string) {
+	var ReEscritura string = ""
+	if BanderaLogin {
+		if CurrentSession.Id_user == 1 && CurrentSession.Id_grp == 1 {
+			grupo := BuscarExisteGrupo(name)
+			if grupo == -1 {
+				file, _ := os.OpenFile(string(CurrentSession.Direccion[:]), os.O_RDWR, 0777)
+				defer file.Close()
+				var cadena string = ""
+				super := structs.SuperBloque{}
+				inodo := structs.InodoTable{}
+
+				file.Seek(CurrentSession.InicioSuper, 0)
+				TempSB := structs.SuperBloque{}
+				var sizetemp int = int(unsafe.Sizeof(TempSB))
+				data := leerBytes(file, sizetemp)
+				buffer := bytes.NewBuffer(data)
+				Errores := binary.Read(buffer, binary.BigEndian, &super)
+				if Errores != nil {
+					fmt.Println("F perro")
+				}
+
+				file.Seek(CurrentSession.InicioSuper, 0)
+				TempTI := structs.SuperBloque{}
+				var sizetemp1 int = int(unsafe.Sizeof(TempTI))
+				data1 := leerBytes(file, sizetemp1)
+				buffer1 := bytes.NewBuffer(data1)
+				Errores1 := binary.Read(buffer1, binary.BigEndian, &inodo)
+				if Errores1 != nil {
+					fmt.Println("F perro")
+				}
+
+				for i := 0; i < 15; i++ {
+					if inodo.I_block[i] != -1 {
+						archivo := structs.BloqueArchivo{}
+						file.Seek(int64(super.S_block_start), 0)
+						for j := 0; j <= int(inodo.I_block[i]); j++ {
+							temparchivo := structs.BloqueArchivo{}
+							var sizetemp2 int = int(unsafe.Sizeof(temparchivo))
+							data2 := leerBytes(file, sizetemp2)
+							buffer2 := bytes.NewBuffer(data2)
+							Errores2 := binary.Read(buffer2, binary.BigEndian, &archivo)
+							if Errores2 != nil {
+								fmt.Println("F perro")
+							}
+						}
+						cadena += string(archivo.B_content[:])
+					}
+				}
+				NuevVar := "0" + ",G," + name + "\n"
+				ReEscritura = cadena + NuevVar
+				archivo := structs.BloqueArchivo{}
+				copy(archivo.B_content[:], ReEscritura)
+				sizesBloqueCarpeta := uint64(unsafe.Sizeof(structs.BloqueCarpeta{}))
+				file.Seek(int64(super.S_inode_start+sizesBloqueCarpeta), 0)
+				var bufferControl3 bytes.Buffer
+				binary.Write(&bufferControl3, binary.BigEndian, &archivo)
+				_, errs3 := file.Write(bufferControl3.Bytes())
+				if errs3 != nil {
+					fmt.Println("ERROR WE")
+				}
+				fmt.Println("Grupo Eliminado con Exito")
+				fmt.Println("------------------users.txt------------------")
+				fmt.Println(ReEscritura)
+
+			} else {
+				fmt.Println("ERROR ya existe un grupo con ese nombre")
+			}
+		} else {
+			fmt.Println("ERROR solo el usuario root puede ejecutar este comando")
+		}
+	} else {
+		fmt.Println("ERROR necesita iniciar sesion para poder ejecutar este comando")
+	}
+}
+
+func MkFile(path string, r bool, sized string, cont string) {
+
+}
+
+//"1,G,root\n1,U,root,root,123\n"
+//para las particiones logicas probar utilizar el seek current o en vez del 0 utilizar el 1 que es lo mismo, aun no he echo las pruebas pero hay que intentarlo
+//Revisar los obligatorios y los opcionales en los comandos principales, que creo que solo el login tiene las validaciones bien echas lgp

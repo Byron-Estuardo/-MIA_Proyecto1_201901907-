@@ -1,14 +1,17 @@
 package main
 
 import (
-	"MiaProyecto2/AdminDisks"
-	//	"os"
-	//	"strings"
-	//
-	//"github.com/antlr/antlr4/runtime/Go/antlr"
+	"MiaProyecto2/parser"
+	"bufio"
+	"fmt"
+	"log"
+	"os"
+	"regexp"
+	"strings"
+
+	"github.com/antlr/antlr4/runtime/Go/antlr"
 )
 
-/*
 type TreeShapeListener struct {
 	*parser.BaseChemsListener
 }
@@ -19,6 +22,7 @@ func NewTreeShapeListener() *TreeShapeListener {
 
 func AnalizarTexto(a string) {
 	// Setup the input
+	fmt.Println(a)
 	is := antlr.NewInputStream(a)
 
 	//is, _ := antlr.NewFileStream("entrada.txt")
@@ -33,46 +37,53 @@ func AnalizarTexto(a string) {
 	tree := p.Start()
 
 	antlr.ParseTreeWalkerDefault.Walk(NewTreeShapeListener(), tree)
-	fmt.Println("Hola mundo ")
 }
 
-func menu() {
+var execs = regexp.MustCompile("(?i)exec")
+
+func main() {
+	menu :=
+		`
+------------------------------INGRESE UN COMANDO------------------------------
+--------------------------------exit para salir-------------------------------
+
+>`
 	finalizar := false
-	fmt.Println("Ingrese un Comando:")
+	fmt.Println(menu)
 	reader := bufio.NewReader(os.Stdin)
-	//  Ciclo para lectura de multiples comandos
 	for !finalizar {
+		fmt.Println("Ingrese un Comando:")
 		comando, _ := reader.ReadString('\n')
-		if strings.Contains(comando, "pause\n") {
-			fmt.Println("Pausado:")
-			AdminDisks.Pausa()
-			fmt.Println("continua xd")
-		} else {
-			if comando != "" && comando != "pause\n" {
-				ejecucion_comando(comando)
+		comando = strings.TrimRight(comando, "\n")
+		fmt.Println(comando)
+		if comando == "exit" {
+			fmt.Println("Adios!")
+			break
+		}
+		if execs.MatchString(comando) {
+			a := strings.Split(comando, "=")
+			path := a[1]
+			if strings.Contains(path, "\"") {
+				path = path[1 : len(path)-1]
 			}
+
+			readFile, err := os.Open(path)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fileScanner := bufio.NewScanner(readFile)
+			fileScanner.Split(bufio.ScanLines)
+			var lines []string
+			for fileScanner.Scan() {
+				lines = append(lines, fileScanner.Text())
+			}
+			readFile.Close()
+			for _, line := range lines {
+				AnalizarTexto(line)
+			}
+
+		} else {
+			AnalizarTexto(comando)
 		}
 	}
-}
-
-func ejecucion_comando(commandArray string) {
-	data := strings.ToLower(commandArray)
-	if data == "crear_disco" {
-		fmt.Println("crear disco")
-	} else if data == "escribir" {
-		fmt.Println("Escribir")
-	} else if data == "mostrar" {
-		fmt.Println("mostrar")
-	} else {
-		fmt.Println("Comando ingresado no es valido")
-	}
-}
-*/
-func main() {
-	//menu()
-	//fmt.Println("Pruebs")
-	AdminDisks.Mkdisk("15", "wf", "m", "/home/curious1924/Escritorio/Joder/disco23.dk")
-	//fmt.Println("Pruebs1")
-	//AnalizarTexto("#Comentario de prueba")
-	//crearDisco("/home/curious1924/Escritorio/disco23.dk")
 }

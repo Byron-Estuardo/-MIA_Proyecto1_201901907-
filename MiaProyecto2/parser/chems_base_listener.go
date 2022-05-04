@@ -33,6 +33,36 @@ func (s *BaseChemsListener) EnterAdminDiscos(ctx *AdminDiscosContext) {}
 // ExitAdminDiscos is called when production adminDiscos is exited.
 func (s *BaseChemsListener) ExitAdminDiscos(ctx *AdminDiscosContext) {}
 
+// EnterAdminArchivos is called when production adminArchivos is entered.
+func (s *BaseChemsListener) EnterAdminArchivos(ctx *AdminArchivosContext) {}
+
+// ExitAdminArchivos is called when production adminArchivos is exited.
+func (s *BaseChemsListener) ExitAdminArchivos(ctx *AdminArchivosContext) {}
+
+// EnterAdminUsuarios is called when production adminUsuarios is entered.
+func (s *BaseChemsListener) EnterAdminUsuarios(ctx *AdminUsuariosContext) {}
+
+// ExitAdminUsuarios is called when production adminUsuarios is exited.
+func (s *BaseChemsListener) ExitAdminUsuarios(ctx *AdminUsuariosContext) {}
+
+// EnterAdminCarpetas is called when production adminCarpetas is entered.
+func (s *BaseChemsListener) EnterAdminCarpetas(ctx *AdminCarpetasContext) {}
+
+// ExitAdminCarpetas is called when production adminCarpetas is exited.
+func (s *BaseChemsListener) ExitAdminCarpetas(ctx *AdminCarpetasContext) {}
+
+// EnterPmkfile is called when production pmkfile is entered.
+func (s *BaseChemsListener) EnterPmkfile(ctx *PmkfileContext) {}
+
+// ExitPmkfile is called when production pmkfile is exited.
+func (s *BaseChemsListener) ExitPmkfile(ctx *PmkfileContext) {}
+
+// EnterParametrosmkfile is called when production parametrosmkfile is entered.
+func (s *BaseChemsListener) EnterParametrosmkfile(ctx *ParametrosmkfileContext) {}
+
+// ExitParametrosmkfile is called when production parametrosmkfile is exited.
+func (s *BaseChemsListener) ExitParametrosmkfile(ctx *ParametrosmkfileContext) {}
+
 // EnterPmkdisk is called when production pmkdisk is entered.
 func (s *BaseChemsListener) EnterPmkdisk(ctx *PmkdiskContext) {}
 
@@ -50,6 +80,24 @@ func (s *BaseChemsListener) EnterPrmdisk(ctx *PrmdiskContext) {}
 
 // ExitPrmdisk is called when production prmdisk is exited.
 func (s *BaseChemsListener) ExitPrmdisk(ctx *PrmdiskContext) {}
+
+// EnterPmkgrp is called when production pmkgrp is entered.
+func (s *BaseChemsListener) EnterPmkgrp(ctx *PmkgrpContext) {}
+
+// ExitPmkgrp is called when production pmkgrp is exited.
+func (s *BaseChemsListener) ExitPmkgrp(ctx *PmkgrpContext) {}
+
+// EnterPrmkgrp is called when production prmkgrp is entered.
+func (s *BaseChemsListener) EnterPrmkgrp(ctx *PrmkgrpContext) {}
+
+// ExitPrmkgrp is called when production prmkgrp is exited.
+func (s *BaseChemsListener) ExitPrmkgrp(ctx *PrmkgrpContext) {}
+
+// EnterPrmkusr is called when production prmkusr is entered.
+func (s *BaseChemsListener) EnterPrmkusr(ctx *PrmkusrContext) {}
+
+// ExitPrmkusr is called when production prmkusr is exited.
+func (s *BaseChemsListener) ExitPrmkusr(ctx *PrmkusrContext) {}
 
 // EnterPfdisk is called when production pfdisk is entered.
 func (s *BaseChemsListener) EnterPfdisk(ctx *PfdiskContext) {}
@@ -74,3 +122,39 @@ func (s *BaseChemsListener) EnterParametrosmount(ctx *ParametrosmountContext) {}
 
 // ExitParametrosmount is called when production parametrosmount is exited.
 func (s *BaseChemsListener) ExitParametrosmount(ctx *ParametrosmountContext) {}
+
+// EnterPmkfs is called when production pmkfs is entered.
+func (s *BaseChemsListener) EnterPmkfs(ctx *PmkfsContext) {}
+
+// ExitPmkfs is called when production pmkfs is exited.
+func (s *BaseChemsListener) ExitPmkfs(ctx *PmkfsContext) {}
+
+// EnterParametrosmkfs is called when production parametrosmkfs is entered.
+func (s *BaseChemsListener) EnterParametrosmkfs(ctx *ParametrosmkfsContext) {}
+
+// ExitParametrosmkfs is called when production parametrosmkfs is exited.
+func (s *BaseChemsListener) ExitParametrosmkfs(ctx *ParametrosmkfsContext) {}
+
+// EnterPlogin is called when production plogin is entered.
+func (s *BaseChemsListener) EnterPlogin(ctx *PloginContext) {}
+
+// ExitPlogin is called when production plogin is exited.
+func (s *BaseChemsListener) ExitPlogin(ctx *PloginContext) {}
+
+// EnterParametroslogin is called when production parametroslogin is entered.
+func (s *BaseChemsListener) EnterParametroslogin(ctx *ParametrosloginContext) {}
+
+// ExitParametroslogin is called when production parametroslogin is exited.
+func (s *BaseChemsListener) ExitParametroslogin(ctx *ParametrosloginContext) {}
+
+// EnterPmkuser is called when production pmkuser is entered.
+func (s *BaseChemsListener) EnterPmkuser(ctx *PmkuserContext) {}
+
+// ExitPmkuser is called when production pmkuser is exited.
+func (s *BaseChemsListener) ExitPmkuser(ctx *PmkuserContext) {}
+
+// EnterParametrosmkuser is called when production parametrosmkuser is entered.
+func (s *BaseChemsListener) EnterParametrosmkuser(ctx *ParametrosmkuserContext) {}
+
+// ExitParametrosmkuser is called when production parametrosmkuser is exited.
+func (s *BaseChemsListener) ExitParametrosmkuser(ctx *ParametrosmkuserContext) {}
