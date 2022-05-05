@@ -22,7 +22,6 @@ func NewTreeShapeListener() *TreeShapeListener {
 
 func AnalizarTexto(a string) {
 	// Setup the input
-	fmt.Println(a)
 	is := antlr.NewInputStream(a)
 
 	//is, _ := antlr.NewFileStream("entrada.txt")

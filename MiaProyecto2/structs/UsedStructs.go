@@ -83,11 +83,3 @@ type Sesion struct {
 	Direccion    [60]byte
 	Fit          [1]byte
 }
-
-type Usuario struct {
-	Id_usr   int64
-	Id_grp   int64
-	Username [12]byte
-	Password [12]byte
-	Group    [12]byte
-}

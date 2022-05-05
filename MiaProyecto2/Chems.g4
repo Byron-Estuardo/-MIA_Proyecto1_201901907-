@@ -126,6 +126,7 @@ parametrosfdisk
 | TYPE IGUAL LETRA { ValType = $LETRA.text } 
 | NAME IGUAL CADENA { str:= $CADENA.text[1:len($CADENA.text)-1]
                       ValName = str}
+| NAME IGUAL IDENTIFICADOR { ValName = $IDENTIFICADOR.text}
 ;
 
 pmount

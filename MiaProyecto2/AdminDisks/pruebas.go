@@ -54,7 +54,6 @@ func CrearDisco(direccion string) {
 	if err1 != nil {
 		fmt.Println(err)
 	}
-
 	file, err := os.Create(direccion)
 	if err != nil {
 		fmt.Println(err)
@@ -117,9 +116,10 @@ func BuscarParticion_Primaria_Extendida(direccion string, nombre string) int {
 			fmt.Println("F perro")
 		}
 		for i := 0; i < 4; i++ {
-			nameMbr := string(TempMBR.Mbr_partition[i].Part_name[:])
-			if string(TempMBR.Mbr_partition[i].Part_status[:]) != "1" {
-				if strings.Compare(nameMbr, nombre) == 0 {
+			nameMbr := strings.Split(string(TempMBR.Mbr_partition[i].Part_name[:]), "\x00")
+			tempstatus := strings.Split(string(TempMBR.Mbr_partition[i].Part_status[:]), "\x00")
+			if tempstatus[0] != "1" {
+				if strings.Compare(nameMbr[0], nombre) == 0 {
 					return i
 				}
 			}
@@ -194,10 +194,12 @@ func leerEstructura(file *os.File, posicionEs int64, nombre string) string {
 		return "error"
 
 	} else {
-		nombres := string(estructuraTemporal.Part_name[:]) + "\n"
+		nombres1 := strings.Split(string(estructuraTemporal.Part_name[:]), "\x00")
+		nombres := nombres1[0] + "\n"
+		temportal := strings.Split(string(estructuraTemporal.Part_next[:]), "\x00")
 		if strings.Compare(nombres, nombre) == 0 {
 			return "1"
-		} else if string(estructuraTemporal.Part_next[:]) == "-1" {
+		} else if temportal[0] == "-1" {
 			return "-1"
 		}
 	}
@@ -224,19 +226,20 @@ func ExisteParticion(direccion string, nombre string) bool {
 			fmt.Println("F perro")
 		}
 		for i := 0; i < 4; i++ {
-			nameMbr := string(TempMBR.Mbr_partition[i].Part_name[:])
-			if strings.Compare(nameMbr, nombre) == 0 {
+			nameMbr := strings.Split(string(TempMBR.Mbr_partition[i].Part_name[:]), "\x00")
+			partstypes := strings.Split(string(TempMBR.Mbr_partition[i].Part_type[:]), "\x00")
+			if strings.Compare(nameMbr[0], nombre) == 0 {
 				retorno = true
 				return retorno
-			} else if string(TempMBR.Mbr_partition[i].Part_type[:]) == "E" {
+			} else if partstypes[0] == "E" {
 				extendida = i
 			}
 		}
 		if extendida != -1 {
-			var stringStart string = string(TempMBR.Mbr_partition[extendida].Part_start[:])
-			var stringSize string = string(TempMBR.Mbr_partition[extendida].Part_size[:])
-			InicioParticion, _ := strconv.Atoi(stringStart)
-			InicioSize, _ := strconv.Atoi(stringSize)
+			stringStart := strings.Split(string(TempMBR.Mbr_partition[extendida].Part_start[:]), "\x00")
+			stringSize := strings.Split(string(TempMBR.Mbr_partition[extendida].Part_size[:]), "\x00")
+			InicioParticion, _ := strconv.Atoi(stringStart[0])
+			InicioSize, _ := strconv.Atoi(stringSize[0])
 			file.Seek(int64(InicioParticion), 0)
 			var sizeEBR int64 = int64(unsafe.Sizeof(structs.EBR{}))
 			var InicioEnviado int64 = int64(InicioParticion)
@@ -283,7 +286,7 @@ func CrearParticionPrimaria(direccion string, nombre string, size int, fit strin
 		}
 	} else {
 		size_bytes = size * 1024
-	}
+	} //mkdisk -size=40 -unit=M -path=/tmp/d1.dk
 	MBR := structs.MBR{}
 	file, err := os.OpenFile(auxPath, os.O_RDWR, 0777)
 	defer file.Close()
@@ -301,9 +304,12 @@ func CrearParticionPrimaria(direccion string, nombre string, size int, fit strin
 			fmt.Println("Error")
 		} else {
 			for i := 0; i < 4; i++ {
-				var sizes string = string(MBR.Mbr_partition[i].Part_size[:])
-				convertido, _ := strconv.Atoi(sizes)
-				if string(MBR.Mbr_partition[i].Part_start[:]) == "-1" || string(MBR.Mbr_partition[i].Part_status[:]) == "1" || convertido >= size_bytes {
+				res1 := strings.Split(string(MBR.Mbr_partition[i].Part_start[:]), "\x00")
+				res2 := strings.Split(string(MBR.Mbr_partition[i].Part_status[:]), "\x00")
+				res3 := strings.Split(string(MBR.Mbr_partition[i].Part_size[:]), "\x00")
+				var sizes1 string = string(res3[0])
+				convertido1, _ := strconv.Atoi(sizes1)
+				if res1[0] == "-1" || res2[0] == "1" && convertido1 >= size_bytes {
 					FlagParticion = true
 					Numero_Particion = i
 					break
@@ -312,41 +318,48 @@ func CrearParticionPrimaria(direccion string, nombre string, size int, fit strin
 			if FlagParticion {
 				var EspacioUsado int = 0
 				for i := 0; i < 4; i++ {
-					if string(MBR.Mbr_partition[i].Part_status[:]) == "1" {
-						var sizes string = string(MBR.Mbr_partition[i].Part_size[:])
+					res1 := strings.Split(string(MBR.Mbr_partition[i].Part_status[:]), "\x00")
+					if res1[0] != "1" {
+						res2 := strings.Split(string(MBR.Mbr_partition[i].Part_size[:]), "\x00")
+						var sizes string = string(res2[0])
 						convertido, _ := strconv.Atoi(sizes)
 						EspacioUsado += convertido
 					}
 				}
-				var sizes string = string(MBR.Mbr_size[:])
-				convertido, _ := strconv.Atoi(sizes)
-				fmt.Println("Espacio Disponible: " + string(rune(convertido-EspacioUsado)) + "Bytes")
-				fmt.Println("Espacio Necesario: " + string(rune(size_bytes)) + "Bytes")
+				res1 := strings.Split(string(MBR.Mbr_size[:]), "\x00")
+				convertido, _ := strconv.Atoi(res1[0])
+				total := convertido - EspacioUsado
+				strtotal := strconv.Itoa(total)
+				strsize := strconv.Itoa(size_bytes)
+				fmt.Println("Espacio Disponible: " + strtotal + " Bytes")
+				fmt.Println("Espacio Necesario: " + strsize + " Bytes")
 				if (convertido - EspacioUsado) >= size_bytes {
 					if !ExisteParticion(direccion, nombre) {
-						if string(MBR.Mbr_disk_fit[:]) == "F" {
+						resf := strings.Split(string(MBR.Mbr_disk_fit[:]), "\x00")
+						if resf[0] == "F" {
 							copy(MBR.Mbr_partition[Numero_Particion].Part_type[:], "P")
 							copy(MBR.Mbr_partition[Numero_Particion].Part_fit[:], auxFit)
 							if Numero_Particion == 0 {
-								copy(MBR.Mbr_partition[Numero_Particion].Part_start[:], string(rune(Tama)))
+								strtama := strconv.Itoa(Tama)
+								copy(MBR.Mbr_partition[Numero_Particion].Part_start[:], strtama)
 							} else {
 								var unmenos = Numero_Particion - 1
-								PartStart, _ := strconv.Atoi(string(MBR.Mbr_partition[unmenos].Part_start[:]))
-								PartSize, _ := strconv.Atoi(string(MBR.Mbr_partition[unmenos].Part_size[:]))
+								resst := strings.Split(string(MBR.Mbr_partition[unmenos].Part_start[:]), "\x00")
+								ressi := strings.Split(string(MBR.Mbr_partition[unmenos].Part_size[:]), "\x00")
+								PartStart, _ := strconv.Atoi(resst[0])
+								PartSize, _ := strconv.Atoi(ressi[0])
 								total := PartStart + PartSize
-								copy(MBR.Mbr_partition[Numero_Particion].Part_start[:], string(rune(total)))
+								strpst := strconv.Itoa(total)
+								copy(MBR.Mbr_partition[Numero_Particion].Part_start[:], strpst)
 							}
-							copy(MBR.Mbr_partition[Numero_Particion].Part_size[:], string(rune(size_bytes)))
+							copy(MBR.Mbr_partition[Numero_Particion].Part_size[:], strsize)
 							copy(MBR.Mbr_partition[Numero_Particion].Part_status[:], "0")
 							copy(MBR.Mbr_partition[Numero_Particion].Part_name[:], string(nombre))
-							file.Seek(0, 0)
-							var bufferControl bytes.Buffer
-							binary.Write(&bufferControl, binary.BigEndian, &MBR)
-							file.Write(bufferControl.Bytes())
 							s := &buffer1
 							var binario bytes.Buffer
 							binary.Write(&binario, binary.BigEndian, s)
-							partstart, _ := strconv.Atoi(string(MBR.Mbr_partition[Numero_Particion].Part_start[:]))
+							restpts := strings.Split(string(MBR.Mbr_partition[Numero_Particion].Part_start[:]), "\x00")
+							partstart, _ := strconv.Atoi(restpts[0])
 							file.Seek(int64(partstart), 0)
 							for i := 0; i < size_bytes; i++ {
 								_, err := file.Write(binario.Bytes())
@@ -355,6 +368,10 @@ func CrearParticionPrimaria(direccion string, nombre string, size int, fit strin
 									fmt.Println(err)
 								}
 							}
+							file.Seek(0, 0)
+							var bufferControl bytes.Buffer
+							binary.Write(&bufferControl, binary.BigEndian, &MBR)
+							file.Write(bufferControl.Bytes())
 							fmt.Println("-------------------- FDISK --------------------")
 							fmt.Println("------------------ Disco Primario Creado ------------------")
 							fmt.Println("Part Status: " + string(MBR.Mbr_partition[Numero_Particion].Part_status[:]))
@@ -362,14 +379,19 @@ func CrearParticionPrimaria(direccion string, nombre string, size int, fit strin
 							fmt.Println("Part Start: " + string(MBR.Mbr_partition[Numero_Particion].Part_start[:]))
 							fmt.Println("Part Size: " + string(MBR.Mbr_partition[Numero_Particion].Part_size[:]))
 							fmt.Println("Part name: " + string(MBR.Mbr_partition[Numero_Particion].Part_name[:]))
-						} else if string(MBR.Mbr_disk_fit[:]) == "B" {
+						} else if resf[0] == "B" {
 							var BestIndex int = Numero_Particion
 							for i := 0; i < 4; i++ {
-								convert1, _ := strconv.Atoi(string(MBR.Mbr_partition[i].Part_size[:]))
-								if string(MBR.Mbr_partition[i].Part_start[:]) == "-1" || string(MBR.Mbr_partition[i].Part_status[:]) == "1" && convert1 >= size_bytes {
+								sizess := strings.Split(string(MBR.Mbr_partition[i].Part_size[:]), "\x00")
+								convert1, _ := strconv.Atoi(string(sizess[0]))
+								res1 := strings.Split(string(MBR.Mbr_partition[i].Part_start[:]), "\x00")
+								res2 := strings.Split(string(MBR.Mbr_partition[i].Part_status[:]), "\x00")
+								if res1[0] == "-1" || res2[0] == "1" && convert1 >= size_bytes {
 									if i != Numero_Particion {
-										convert2, _ := strconv.Atoi(string(MBR.Mbr_partition[BestIndex].Part_size[:]))
-										convert3, _ := strconv.Atoi(string(MBR.Mbr_partition[i].Part_size[:]))
+										partsize1 := strings.Split(string(MBR.Mbr_partition[BestIndex].Part_size[:]), "\x00")
+										partsize := strings.Split(string(MBR.Mbr_partition[i].Part_size[:]), "\x00")
+										convert2, _ := strconv.Atoi(partsize1[0])
+										convert3, _ := strconv.Atoi(partsize[0])
 										if convert2 > convert3 {
 											BestIndex = i
 											break
@@ -380,25 +402,26 @@ func CrearParticionPrimaria(direccion string, nombre string, size int, fit strin
 							copy(MBR.Mbr_partition[BestIndex].Part_type[:], "P")
 							copy(MBR.Mbr_partition[BestIndex].Part_fit[:], auxFit)
 							if BestIndex == 0 {
-								copy(MBR.Mbr_partition[BestIndex].Part_start[:], string(rune(Tama)))
+								strtama := strconv.Itoa(Tama)
+								copy(MBR.Mbr_partition[BestIndex].Part_start[:], strtama)
 							} else {
 								var unmenos = BestIndex - 1
-								PartStart, _ := strconv.Atoi(string(MBR.Mbr_partition[unmenos].Part_start[:]))
-								PartSize, _ := strconv.Atoi(string(MBR.Mbr_partition[unmenos].Part_size[:]))
+								resst := strings.Split(string(MBR.Mbr_partition[unmenos].Part_start[:]), "\x00")
+								ressi := strings.Split(string(MBR.Mbr_partition[unmenos].Part_size[:]), "\x00")
+								PartStart, _ := strconv.Atoi(resst[0])
+								PartSize, _ := strconv.Atoi(ressi[0])
 								total := PartStart + PartSize
-								copy(MBR.Mbr_partition[BestIndex].Part_start[:], string(rune(total)))
+								strpst := strconv.Itoa(total)
+								copy(MBR.Mbr_partition[BestIndex].Part_start[:], strpst)
 							}
-							copy(MBR.Mbr_partition[BestIndex].Part_size[:], string(rune(size_bytes)))
+							copy(MBR.Mbr_partition[BestIndex].Part_size[:], strsize)
 							copy(MBR.Mbr_partition[BestIndex].Part_status[:], "0")
 							copy(MBR.Mbr_partition[BestIndex].Part_name[:], string(nombre))
-							file.Seek(0, 0)
-							var bufferControl bytes.Buffer
-							binary.Write(&bufferControl, binary.BigEndian, &MBR)
-							file.Write(bufferControl.Bytes())
 							s := &buffer1
 							var binario bytes.Buffer
 							binary.Write(&binario, binary.BigEndian, s)
-							partstart, _ := strconv.Atoi(string(MBR.Mbr_partition[BestIndex].Part_start[:]))
+							restpts := strings.Split(string(MBR.Mbr_partition[BestIndex].Part_start[:]), "\x00")
+							partstart, _ := strconv.Atoi(restpts[0])
 							file.Seek(int64(partstart), 0)
 							for i := 0; i < size_bytes; i++ {
 								_, err := file.Write(binario.Bytes())
@@ -406,6 +429,10 @@ func CrearParticionPrimaria(direccion string, nombre string, size int, fit strin
 									fmt.Println(err)
 								}
 							}
+							file.Seek(0, 0)
+							var bufferControl bytes.Buffer
+							binary.Write(&bufferControl, binary.BigEndian, &MBR)
+							file.Write(bufferControl.Bytes())
 							fmt.Println("-------------------- FDISK --------------------")
 							fmt.Println("------------------ Disco Primario Creado ------------------")
 							fmt.Println("Part Status: " + string(MBR.Mbr_partition[BestIndex].Part_status[:]))
@@ -413,14 +440,19 @@ func CrearParticionPrimaria(direccion string, nombre string, size int, fit strin
 							fmt.Println("Part Start: " + string(MBR.Mbr_partition[BestIndex].Part_start[:]))
 							fmt.Println("Part Size: " + string(MBR.Mbr_partition[BestIndex].Part_size[:]))
 							fmt.Println("Part name: " + string(MBR.Mbr_partition[BestIndex].Part_name[:]))
-						} else if string(MBR.Mbr_disk_fit[:]) == "W" {
+						} else if resf[0] == "W" {
 							var WorstIndex int = Numero_Particion
 							for i := 0; i < 4; i++ {
-								convert1, _ := strconv.Atoi(string(MBR.Mbr_partition[i].Part_size[:]))
-								if string(MBR.Mbr_partition[i].Part_start[:]) == "-1" || string(MBR.Mbr_partition[i].Part_status[:]) == "1" && convert1 >= size_bytes {
+								sizess := strings.Split(string(MBR.Mbr_partition[i].Part_size[:]), "\x00")
+								convert1, _ := strconv.Atoi(string(sizess[0]))
+								res1 := strings.Split(string(MBR.Mbr_partition[i].Part_start[:]), "\x00")
+								res2 := strings.Split(string(MBR.Mbr_partition[i].Part_status[:]), "\x00")
+								if res1[0] == "-1" || res2[0] == "1" && convert1 >= size_bytes {
 									if i != Numero_Particion {
-										convert2, _ := strconv.Atoi(string(MBR.Mbr_partition[WorstIndex].Part_size[:]))
-										convert3, _ := strconv.Atoi(string(MBR.Mbr_partition[i].Part_size[:]))
+										partsize1 := strings.Split(string(MBR.Mbr_partition[WorstIndex].Part_size[:]), "\x00")
+										partsize := strings.Split(string(MBR.Mbr_partition[i].Part_size[:]), "\x00")
+										convert2, _ := strconv.Atoi(partsize1[0])
+										convert3, _ := strconv.Atoi(partsize[0])
 										if convert2 < convert3 {
 											WorstIndex = i
 											break
@@ -431,25 +463,27 @@ func CrearParticionPrimaria(direccion string, nombre string, size int, fit strin
 							copy(MBR.Mbr_partition[WorstIndex].Part_type[:], "P")
 							copy(MBR.Mbr_partition[WorstIndex].Part_fit[:], auxFit)
 							if WorstIndex == 0 {
-								copy(MBR.Mbr_partition[WorstIndex].Part_start[:], string(rune(Tama)))
+								strtama := strconv.Itoa(Tama)
+								copy(MBR.Mbr_partition[WorstIndex].Part_start[:], strtama)
 							} else {
 								var unmenos = WorstIndex - 1
-								PartStart, _ := strconv.Atoi(string(MBR.Mbr_partition[unmenos].Part_start[:]))
-								PartSize, _ := strconv.Atoi(string(MBR.Mbr_partition[unmenos].Part_size[:]))
+								resst := strings.Split(string(MBR.Mbr_partition[unmenos].Part_start[:]), "\x00")
+								ressi := strings.Split(string(MBR.Mbr_partition[unmenos].Part_size[:]), "\x00")
+								PartStart, _ := strconv.Atoi(resst[0])
+								PartSize, _ := strconv.Atoi(ressi[0])
 								total := PartStart + PartSize
-								copy(MBR.Mbr_partition[WorstIndex].Part_start[:], string(rune(total)))
+								strpst := strconv.Itoa(total)
+								copy(MBR.Mbr_partition[WorstIndex].Part_start[:], strpst)
 							}
-							copy(MBR.Mbr_partition[WorstIndex].Part_size[:], string(rune(size_bytes)))
+							copy(MBR.Mbr_partition[WorstIndex].Part_size[:], strsize)
 							copy(MBR.Mbr_partition[WorstIndex].Part_status[:], "0")
 							copy(MBR.Mbr_partition[WorstIndex].Part_name[:], string(nombre))
-							file.Seek(0, 0)
-							var bufferControl bytes.Buffer
-							binary.Write(&bufferControl, binary.BigEndian, &MBR)
-							file.Write(bufferControl.Bytes())
+
 							s := &buffer1
 							var binario bytes.Buffer
 							binary.Write(&binario, binary.BigEndian, s)
-							partstart, _ := strconv.Atoi(string(MBR.Mbr_partition[WorstIndex].Part_start[:]))
+							restpts := strings.Split(string(MBR.Mbr_partition[WorstIndex].Part_start[:]), "\x00")
+							partstart, _ := strconv.Atoi(restpts[0])
 							file.Seek(int64(partstart), 0)
 							for i := 0; i < size_bytes; i++ {
 								_, err := file.Write(binario.Bytes())
@@ -458,6 +492,10 @@ func CrearParticionPrimaria(direccion string, nombre string, size int, fit strin
 									fmt.Println(err)
 								}
 							}
+							file.Seek(0, 0)
+							var bufferControl bytes.Buffer
+							binary.Write(&bufferControl, binary.BigEndian, &MBR)
+							file.Write(bufferControl.Bytes())
 							fmt.Println("-------------------- FDISK --------------------")
 							fmt.Println("------------------ Disco Primario Creado ------------------")
 							fmt.Println("Part Status: " + string(MBR.Mbr_partition[WorstIndex].Part_status[:]))
@@ -522,7 +560,8 @@ func CrearParticionExtendida(direccion string, nombre string, size int, fit stri
 			fmt.Println("Error")
 		} else {
 			for i := 0; i < 4; i++ {
-				if string(MBR.Mbr_partition[i].Part_type[:]) == "E" {
+				mbrparttype := strings.Split(string(MBR.Mbr_partition[i].Part_type[:]), "\x00")
+				if mbrparttype[0] == "E" {
 					FlagExtendida = true
 					break
 				}
@@ -530,9 +569,11 @@ func CrearParticionExtendida(direccion string, nombre string, size int, fit stri
 			if !FlagExtendida {
 
 				for i := 0; i < 4; i++ {
-					var sizess string = string(MBR.Mbr_partition[i].Part_size[:])
-					convertidos, _ := strconv.Atoi(sizess)
-					if string(MBR.Mbr_partition[i].Part_start[:]) == "-1" || string(MBR.Mbr_partition[i].Part_status[:]) == "1" && convertidos >= size_bytes {
+					sizess := strings.Split(string(MBR.Mbr_partition[i].Part_size[:]), "\x00")
+					convert1, _ := strconv.Atoi(string(sizess[0]))
+					res1 := strings.Split(string(MBR.Mbr_partition[i].Part_start[:]), "\x00")
+					res2 := strings.Split(string(MBR.Mbr_partition[i].Part_status[:]), "\x00")
+					if res1[0] == "-1" || res2[0] == "1" && convert1 >= size_bytes {
 						FlagParticion = true
 						break
 					}
@@ -540,30 +581,52 @@ func CrearParticionExtendida(direccion string, nombre string, size int, fit stri
 				if FlagParticion {
 					var EspacioUsado int = 0
 					for i := 0; i < 4; i++ {
-						if string(MBR.Mbr_partition[i].Part_status[:]) == "1" {
-							var sizes string = string(MBR.Mbr_partition[i].Part_size[:])
-							convertido, _ := strconv.Atoi(sizes)
-							EspacioUsado += convertido
+						res2 := strings.Split(string(MBR.Mbr_partition[i].Part_status[:]), "\x00")
+						if res2[0] != "1" {
+							sizess := strings.Split(string(MBR.Mbr_partition[i].Part_size[:]), "\x00")
+							convert1, _ := strconv.Atoi(string(sizess[0]))
+							EspacioUsado += convert1
 						}
 					}
-					convertido, _ := strconv.Atoi(string(MBR.Mbr_size[:]))
+					res1 := strings.Split(string(MBR.Mbr_size[:]), "\x00")
+					convertido, _ := strconv.Atoi(res1[0])
+					total := convertido - EspacioUsado
+					strtotal := strconv.Itoa(total)
+					strsize := strconv.Itoa(size_bytes)
+					fmt.Println("Espacio Disponible: " + strtotal + " Bytes")
+					fmt.Println("Espacio Necesario: " + strsize + " Bytes")
 					if (convertido - EspacioUsado) >= size_bytes {
 						if !ExisteParticion(direccion, nombre) {
-							if string(MBR.Mbr_disk_fit[:]) == "F" {
+							resf := strings.Split(string(MBR.Mbr_disk_fit[:]), "\x00")
+							if resf[0] == "F" {
 								copy(MBR.Mbr_partition[Numero_Particion].Part_type[:], "E")
 								copy(MBR.Mbr_partition[Numero_Particion].Part_fit[:], auxFit)
 								if Numero_Particion == 0 {
-									copy(MBR.Mbr_partition[Numero_Particion].Part_start[:], string(rune(Tama)))
+									strtama := strconv.Itoa(Tama)
+									copy(MBR.Mbr_partition[Numero_Particion].Part_start[:], strtama)
 								} else {
 									var unmenos = Numero_Particion - 1
-									PartStart, _ := strconv.Atoi(string(MBR.Mbr_partition[unmenos].Part_start[:]))
-									PartSize, _ := strconv.Atoi(string(MBR.Mbr_partition[unmenos].Part_size[:]))
+									resst := strings.Split(string(MBR.Mbr_partition[unmenos].Part_start[:]), "\x00")
+									ressi := strings.Split(string(MBR.Mbr_partition[unmenos].Part_size[:]), "\x00")
+									PartStart, _ := strconv.Atoi(resst[0])
+									PartSize, _ := strconv.Atoi(ressi[0])
 									total := PartStart + PartSize
-									copy(MBR.Mbr_partition[Numero_Particion].Part_start[:], string(rune(total)))
+									strpst := strconv.Itoa(total)
+									copy(MBR.Mbr_partition[Numero_Particion].Part_start[:], strpst)
 								}
-								copy(MBR.Mbr_partition[Numero_Particion].Part_size[:], string(rune(size_bytes)))
+								copy(MBR.Mbr_partition[Numero_Particion].Part_size[:], strsize)
 								copy(MBR.Mbr_partition[Numero_Particion].Part_status[:], "0")
 								copy(MBR.Mbr_partition[Numero_Particion].Part_name[:], string(nombre))
+								s := &buffer1
+								var binario bytes.Buffer
+								binary.Write(&binario, binary.BigEndian, s)
+								for i := 0; i < size_bytes; i++ {
+									_, err := file.Write(binario.Bytes())
+
+									if err != nil {
+										fmt.Println(err)
+									}
+								}
 								file.Seek(0, 0)
 								var bufferControl bytes.Buffer
 								binary.Write(&bufferControl, binary.BigEndian, &MBR)
@@ -575,23 +638,13 @@ func CrearParticionExtendida(direccion string, nombre string, size int, fit stri
 								copy(EBR.Part_size[:], "0")
 								copy(EBR.Part_next[:], "-1")
 								copy(EBR.Part_name[:], "")
-								seeking, _ := strconv.Atoi(string(MBR.Mbr_partition[Numero_Particion].Part_start[:]))
+								seekings := strings.Split(string(MBR.Mbr_partition[Numero_Particion].Part_start[:]), "\x00")
+								seeking, _ := strconv.Atoi(seekings[0])
 								file.Seek(int64(seeking), 0)
 								var bufferControlEBR bytes.Buffer
 								binary.Write(&bufferControlEBR, binary.BigEndian, &EBR)
 								file.Write(bufferControl.Bytes())
 
-								s := &buffer1
-								var binario bytes.Buffer
-								binary.Write(&binario, binary.BigEndian, s)
-								var EBRSIZE int = int(unsafe.Sizeof(structs.EBR{}))
-								for i := 0; i < (size_bytes - EBRSIZE); i++ {
-									_, err := file.Write(binario.Bytes())
-
-									if err != nil {
-										fmt.Println(err)
-									}
-								}
 								fmt.Println("-------------------- FDISK --------------------")
 								fmt.Println("------------------ Disco Extendido Creado ------------------")
 								fmt.Println("Part Status: " + string(MBR.Mbr_partition[Numero_Particion].Part_status[:]))
@@ -599,15 +652,20 @@ func CrearParticionExtendida(direccion string, nombre string, size int, fit stri
 								fmt.Println("Part Start: " + string(MBR.Mbr_partition[Numero_Particion].Part_start[:]))
 								fmt.Println("Part Size: " + string(MBR.Mbr_partition[Numero_Particion].Part_size[:]))
 								fmt.Println("Part name: " + string(MBR.Mbr_partition[Numero_Particion].Part_name[:]))
-							} else if string(MBR.Mbr_disk_fit[:]) == "B" {
+							} else if resf[0] == "B" {
 
 								var BestIndex int = Numero_Particion
 								for i := 0; i < 4; i++ {
-									convert1, _ := strconv.Atoi(string(MBR.Mbr_partition[i].Part_size[:]))
-									if string(MBR.Mbr_partition[i].Part_start[:]) == "-1" || string(MBR.Mbr_partition[i].Part_status[:]) == "1" && convert1 >= size_bytes {
+									sizess := strings.Split(string(MBR.Mbr_partition[i].Part_size[:]), "\x00")
+									convert1, _ := strconv.Atoi(string(sizess[0]))
+									res1 := strings.Split(string(MBR.Mbr_partition[i].Part_start[:]), "\x00")
+									res2 := strings.Split(string(MBR.Mbr_partition[i].Part_status[:]), "\x00")
+									if res1[0] == "-1" || res2[0] == "1" && convert1 >= size_bytes {
 										if i != Numero_Particion {
-											convert2, _ := strconv.Atoi(string(MBR.Mbr_partition[BestIndex].Part_size[:]))
-											convert3, _ := strconv.Atoi(string(MBR.Mbr_partition[i].Part_size[:]))
+											partsize1 := strings.Split(string(MBR.Mbr_partition[BestIndex].Part_size[:]), "\x00")
+											partsize := strings.Split(string(MBR.Mbr_partition[i].Part_size[:]), "\x00")
+											convert2, _ := strconv.Atoi(partsize1[0])
+											convert3, _ := strconv.Atoi(partsize[0])
 											if convert2 > convert3 {
 												BestIndex = i
 												break
@@ -618,17 +676,31 @@ func CrearParticionExtendida(direccion string, nombre string, size int, fit stri
 								copy(MBR.Mbr_partition[BestIndex].Part_type[:], "E")
 								copy(MBR.Mbr_partition[BestIndex].Part_fit[:], auxFit)
 								if BestIndex == 0 {
-									copy(MBR.Mbr_partition[BestIndex].Part_start[:], string(rune(Tama)))
+									strtama := strconv.Itoa(Tama)
+									copy(MBR.Mbr_partition[BestIndex].Part_start[:], strtama)
 								} else {
 									var unmenos = BestIndex - 1
-									PartStart, _ := strconv.Atoi(string(MBR.Mbr_partition[unmenos].Part_start[:]))
-									PartSize, _ := strconv.Atoi(string(MBR.Mbr_partition[unmenos].Part_size[:]))
+									resst := strings.Split(string(MBR.Mbr_partition[unmenos].Part_start[:]), "\x00")
+									ressi := strings.Split(string(MBR.Mbr_partition[unmenos].Part_size[:]), "\x00")
+									PartStart, _ := strconv.Atoi(resst[0])
+									PartSize, _ := strconv.Atoi(ressi[0])
 									total := PartStart + PartSize
-									copy(MBR.Mbr_partition[BestIndex].Part_start[:], string(rune(total)))
+									strpst := strconv.Itoa(total)
+									copy(MBR.Mbr_partition[BestIndex].Part_start[:], strpst)
 								}
-								copy(MBR.Mbr_partition[BestIndex].Part_size[:], string(rune(size_bytes)))
+								copy(MBR.Mbr_partition[BestIndex].Part_size[:], strsize)
 								copy(MBR.Mbr_partition[BestIndex].Part_status[:], "0")
 								copy(MBR.Mbr_partition[BestIndex].Part_name[:], string(nombre))
+								s := &buffer1
+								var binario bytes.Buffer
+								binary.Write(&binario, binary.BigEndian, s)
+								for i := 0; i < size_bytes; i++ {
+									_, err := file.Write(binario.Bytes())
+
+									if err != nil {
+										fmt.Println(err)
+									}
+								}
 								file.Seek(0, 0)
 								var bufferControl bytes.Buffer
 								binary.Write(&bufferControl, binary.BigEndian, &MBR)
@@ -641,24 +713,13 @@ func CrearParticionExtendida(direccion string, nombre string, size int, fit stri
 								copy(EBR.Part_size[:], "0")
 								copy(EBR.Part_next[:], "-1")
 								copy(EBR.Part_name[:], "")
-
-								seeking, _ := strconv.Atoi(string(MBR.Mbr_partition[BestIndex].Part_start[:]))
+								seekings := strings.Split(string(MBR.Mbr_partition[BestIndex].Part_start[:]), "\x00")
+								seeking, _ := strconv.Atoi(seekings[0])
 								file.Seek(int64(seeking), 0)
 								var bufferControlEBR bytes.Buffer
 								binary.Write(&bufferControlEBR, binary.BigEndian, &EBR)
 								file.Write(bufferControl.Bytes())
 
-								s := &buffer1
-								var binario bytes.Buffer
-								binary.Write(&binario, binary.BigEndian, s)
-								var EBRSIZE int = int(unsafe.Sizeof(structs.EBR{}))
-								for i := 0; i < (size_bytes - EBRSIZE); i++ {
-									_, err := file.Write(binario.Bytes())
-
-									if err != nil {
-										fmt.Println(err)
-									}
-								}
 								fmt.Println("-------------------- FDISK --------------------")
 								fmt.Println("------------------ Disco Extendido Creado ------------------")
 								fmt.Println("Part Status: " + string(MBR.Mbr_partition[BestIndex].Part_status[:]))
@@ -666,14 +727,19 @@ func CrearParticionExtendida(direccion string, nombre string, size int, fit stri
 								fmt.Println("Part Start: " + string(MBR.Mbr_partition[BestIndex].Part_start[:]))
 								fmt.Println("Part Size: " + string(MBR.Mbr_partition[BestIndex].Part_size[:]))
 								fmt.Println("Part name: " + string(MBR.Mbr_partition[BestIndex].Part_name[:]))
-							} else if string(MBR.Mbr_disk_fit[:]) == "W" {
+							} else if resf[0] == "W" {
 								var WorstIndex int = Numero_Particion
 								for i := 0; i < 4; i++ {
-									convert1, _ := strconv.Atoi(string(MBR.Mbr_partition[i].Part_size[:]))
-									if string(MBR.Mbr_partition[i].Part_start[:]) == "-1" || string(MBR.Mbr_partition[i].Part_status[:]) == "1" && convert1 >= size_bytes {
+									sizess := strings.Split(string(MBR.Mbr_partition[i].Part_size[:]), "\x00")
+									convert1, _ := strconv.Atoi(string(sizess[0]))
+									res1 := strings.Split(string(MBR.Mbr_partition[i].Part_start[:]), "\x00")
+									res2 := strings.Split(string(MBR.Mbr_partition[i].Part_status[:]), "\x00")
+									if res1[0] == "-1" || res2[0] == "1" && convert1 >= size_bytes {
 										if i != Numero_Particion {
-											convert2, _ := strconv.Atoi(string(MBR.Mbr_partition[WorstIndex].Part_size[:]))
-											convert3, _ := strconv.Atoi(string(MBR.Mbr_partition[i].Part_size[:]))
+											partsize1 := strings.Split(string(MBR.Mbr_partition[WorstIndex].Part_size[:]), "\x00")
+											partsize := strings.Split(string(MBR.Mbr_partition[i].Part_size[:]), "\x00")
+											convert2, _ := strconv.Atoi(partsize1[0])
+											convert3, _ := strconv.Atoi(partsize[0])
 											if convert2 < convert3 {
 												WorstIndex = i
 												break
@@ -684,17 +750,33 @@ func CrearParticionExtendida(direccion string, nombre string, size int, fit stri
 								copy(MBR.Mbr_partition[WorstIndex].Part_type[:], "E")
 								copy(MBR.Mbr_partition[WorstIndex].Part_fit[:], auxFit)
 								if WorstIndex == 0 {
-									copy(MBR.Mbr_partition[WorstIndex].Part_start[:], string(rune(Tama)))
+									strtama := strconv.Itoa(Tama)
+									copy(MBR.Mbr_partition[WorstIndex].Part_start[:], strtama)
 								} else {
 									var unmenos = WorstIndex - 1
-									PartStart, _ := strconv.Atoi(string(MBR.Mbr_partition[unmenos].Part_start[:]))
-									PartSize, _ := strconv.Atoi(string(MBR.Mbr_partition[unmenos].Part_size[:]))
+									resst := strings.Split(string(MBR.Mbr_partition[unmenos].Part_start[:]), "\x00")
+									ressi := strings.Split(string(MBR.Mbr_partition[unmenos].Part_size[:]), "\x00")
+									PartStart, _ := strconv.Atoi(resst[0])
+									PartSize, _ := strconv.Atoi(ressi[0])
 									total := PartStart + PartSize
-									copy(MBR.Mbr_partition[WorstIndex].Part_start[:], string(rune(total)))
+									strpst := strconv.Itoa(total)
+									copy(MBR.Mbr_partition[WorstIndex].Part_start[:], strpst)
 								}
-								copy(MBR.Mbr_partition[WorstIndex].Part_size[:], string(rune(size_bytes)))
+								copy(MBR.Mbr_partition[WorstIndex].Part_size[:], strsize)
 								copy(MBR.Mbr_partition[WorstIndex].Part_status[:], "0")
 								copy(MBR.Mbr_partition[WorstIndex].Part_name[:], string(nombre))
+
+								s := &buffer1
+								var binario bytes.Buffer
+								binary.Write(&binario, binary.BigEndian, s)
+								for i := 0; i < size_bytes; i++ {
+									_, err := file.Write(binario.Bytes())
+
+									if err != nil {
+										fmt.Println(err)
+									}
+								}
+
 								file.Seek(0, 0)
 								var bufferControl bytes.Buffer
 								binary.Write(&bufferControl, binary.BigEndian, &MBR)
@@ -707,24 +789,13 @@ func CrearParticionExtendida(direccion string, nombre string, size int, fit stri
 								copy(EBR.Part_size[:], "0")
 								copy(EBR.Part_next[:], "-1")
 								copy(EBR.Part_name[:], "")
-
-								seeking, _ := strconv.Atoi(string(MBR.Mbr_partition[WorstIndex].Part_start[:]))
+								seekings := strings.Split(string(MBR.Mbr_partition[WorstIndex].Part_start[:]), "\x00")
+								seeking, _ := strconv.Atoi(seekings[0])
 								file.Seek(int64(seeking), 0)
 								var bufferControlEBR bytes.Buffer
 								binary.Write(&bufferControlEBR, binary.BigEndian, &EBR)
 								file.Write(bufferControl.Bytes())
 
-								s := &buffer1
-								var binario bytes.Buffer
-								binary.Write(&binario, binary.BigEndian, s)
-								var EBRSIZE int = int(unsafe.Sizeof(structs.EBR{}))
-								for i := 0; i < (size_bytes - EBRSIZE); i++ {
-									_, err := file.Write(binario.Bytes())
-
-									if err != nil {
-										fmt.Println(err)
-									}
-								}
 								fmt.Println("-------------------- FDISK --------------------")
 								fmt.Println("------------------ Disco Extendido Creado ------------------")
 								fmt.Println("Part Status: " + string(MBR.Mbr_partition[WorstIndex].Part_status[:]))
@@ -967,7 +1038,13 @@ func EXT2(inicio int, tamano int, direccion string) {
 	}
 	fmt.Println("-------------------- Bloque Users.txt --------------------")
 	fmt.Println("B_content: 1,G,root\n1,U,root,root,123")
+}
 
+func archivoExiste(ruta string) bool {
+	if _, err := os.Stat(ruta); os.IsNotExist(err) {
+		return false
+	}
+	return true
 }
 
 // mkdisk("5", "wf", "m", "/home/curious1924/Escritorio/Joder/disco3.dk")
@@ -982,9 +1059,8 @@ func Mkdisk(size string, fit string, unit string, path string) {
 	var ValUnit string = ""
 	var ValPath string = ""
 	if size != "" {
-		Prueba, err := strconv.Atoi(size)
+		Prueba, _ := strconv.Atoi(size)
 		ValSize = Prueba
-		fmt.Println(err)
 		BanderaSize = true
 		if ValSize < 0 {
 			BanderaRepetidos = true
@@ -1058,14 +1134,23 @@ func Mkdisk(size string, fit string, unit string, path string) {
 					copy(MBR.Mbr_partition[i].Part_start[:], "-1")
 					copy(MBR.Mbr_partition[i].Part_name[:], "0")
 				}
-
 				file, err := os.OpenFile(ValPath, os.O_RDWR, 0777)
 				if err != nil {
 					fmt.Println("Error al crear el archivo")
 					fmt.Println(err)
 				}
 				defer file.Close()
-
+				file.Seek(0, 0)
+				var temporal int8 = 0
+				s := &temporal
+				var binario bytes.Buffer
+				binary.Write(&binario, binary.BigEndian, s)
+				for i := 0; i < total_size; i++ {
+					_, err := file.Write(binario.Bytes())
+					if err != nil {
+						fmt.Println(err)
+					}
+				}
 				file.Seek(0, 0)
 				var bufferControl bytes.Buffer
 				binary.Write(&bufferControl, binary.BigEndian, &MBR)
@@ -1073,14 +1158,7 @@ func Mkdisk(size string, fit string, unit string, path string) {
 				if errs != nil {
 					fmt.Println("ERROR WE")
 				}
-				file.Seek(0, 0)
-				var temporal int8 = 0
-				s := &temporal
-				var binario bytes.Buffer
-				binary.Write(&binario, binary.BigEndian, s)
-				for i := 0; i < total_size; i++ {
-					EscribirBytes(file, binario.Bytes())
-				}
+
 				fmt.Println("Disco creado con exito!")
 				fmt.Println("-------------------- MKDISK --------------------")
 				fmt.Println("------------------ Disco Creado ------------------")
@@ -1098,17 +1176,21 @@ func Mkdisk(size string, fit string, unit string, path string) {
 }
 
 func Rmdisk(path string) {
-	fmt.Println("Esta seguro que desea eliminar el disco? S/N :")
-	reader := bufio.NewReader(os.Stdin)
-	comando, _ := reader.ReadString('\n')
-	if strings.Contains(comando, "S\n") || strings.Contains(comando, "s\n") {
-		_ = os.Remove(path)
-		fmt.Println("-------------------- RMDISK --------------------")
-		fmt.Println("Disco eliminado con exito!")
-	} else if strings.Contains(comando, "N\n") || strings.Contains(comando, "n\n") {
-		fmt.Println("Cancelado con exito!")
+	if archivoExiste(path) {
+		fmt.Println("Esta seguro que desea eliminar el disco? S/N :")
+		reader := bufio.NewReader(os.Stdin)
+		comando, _ := reader.ReadString('\n')
+		if strings.Contains(comando, "S\n") || strings.Contains(comando, "s\n") {
+			_ = os.Remove(path)
+			fmt.Println("-------------------- RMDISK --------------------")
+			fmt.Println("Disco eliminado con exito!")
+		} else if strings.Contains(comando, "N\n") || strings.Contains(comando, "n\n") {
+			fmt.Println("Cancelado con exito!")
+		} else {
+			fmt.Println("Opcion incorrecta")
+		}
 	} else {
-		fmt.Println("Opcion incorrecta")
+		fmt.Println("No existe el disco a eliminar")
 	}
 }
 
@@ -1320,8 +1402,10 @@ func Mkfs(ids string, typess string) {
 				if Errores != nil {
 					fmt.Println("F perro no se pudo leer el mbr")
 				}
-				inicio, _ := strconv.Atoi(string(MBR.Mbr_partition[index].Part_start[:]))
-				tamano, _ := strconv.Atoi(string(MBR.Mbr_partition[index].Part_size[:]))
+				mbrinicio := strings.Split(string(MBR.Mbr_partition[index].Part_start[:]), "\x00")
+				mbrtamano := strings.Split(string(MBR.Mbr_partition[index].Part_size[:]), "\x00")
+				inicio, _ := strconv.Atoi(mbrinicio[0])
+				tamano, _ := strconv.Atoi(mbrtamano[0])
 				EXT2(inicio, tamano, nodo.direccion)
 			}
 		}
@@ -1347,7 +1431,8 @@ func getc(f *os.File) (byte, error) {
 }
 
 func BuscarExisteGrupo(name string) int {
-	file, _ := os.OpenFile(string(CurrentSession.Direccion[:]), os.O_RDWR, 0777)
+	direcciones := strings.Split(string(CurrentSession.Direccion[:]), "\x00")
+	file, _ := os.OpenFile(direcciones[0], os.O_RDWR, 0777)
 	defer file.Close()
 	var cadena string = ""
 	super := structs.SuperBloque{}
@@ -1363,9 +1448,10 @@ func BuscarExisteGrupo(name string) int {
 		fmt.Println("F perro")
 	}
 
-	file.Seek(CurrentSession.InicioSuper, 0)
-	TempTI := structs.SuperBloque{}
+	TempTI := structs.InodoTable{}
 	var sizetemp1 int = int(unsafe.Sizeof(TempTI))
+	seeking := super.S_inode_start + uint64(sizetemp1)
+	file.Seek(int64(seeking), 0)
 	data1 := leerBytes(file, sizetemp1)
 	buffer1 := bytes.NewBuffer(data1)
 	Errores1 := binary.Read(buffer1, binary.BigEndian, &inodo)
@@ -1387,7 +1473,8 @@ func BuscarExisteGrupo(name string) int {
 					fmt.Println("F perro")
 				}
 			}
-			cadena += string(archivo.B_content[:])
+			archivoss := strings.Split(string(archivo.B_content[:]), "\x00")
+			cadena += archivoss[0]
 		}
 	}
 	token := strings.Split(cadena, "\n")
@@ -1414,7 +1501,8 @@ func BuscarExisteGrupo(name string) int {
 }
 
 func BuscarExisteUsuario(name string) bool {
-	file, _ := os.OpenFile(string(CurrentSession.Direccion[:]), os.O_RDWR, 0777)
+	direcciones := strings.Split(string(CurrentSession.Direccion[:]), "\x00")
+	file, _ := os.OpenFile(direcciones[0], os.O_RDWR, 0777)
 	defer file.Close()
 	var cadena string = ""
 	super := structs.SuperBloque{}
@@ -1430,9 +1518,10 @@ func BuscarExisteUsuario(name string) bool {
 		fmt.Println("F perro")
 	}
 
-	file.Seek(CurrentSession.InicioSuper, 0)
-	TempTI := structs.SuperBloque{}
+	TempTI := structs.InodoTable{}
 	var sizetemp1 int = int(unsafe.Sizeof(TempTI))
+	seeking := super.S_inode_start + uint64(sizetemp1)
+	file.Seek(int64(seeking), 0)
 	data1 := leerBytes(file, sizetemp1)
 	buffer1 := bytes.NewBuffer(data1)
 	Errores1 := binary.Read(buffer1, binary.BigEndian, &inodo)
@@ -1454,7 +1543,8 @@ func BuscarExisteUsuario(name string) bool {
 					fmt.Println("F perro")
 				}
 			}
-			cadena += string(archivo.B_content[:])
+			archivoss := strings.Split(string(archivo.B_content[:]), "\x00")
+			cadena += archivoss[0]
 		}
 	}
 	token := strings.Split(cadena, "\n")
@@ -1480,7 +1570,8 @@ func BuscarExisteUsuario(name string) bool {
 }
 
 func GetId_Grp() int {
-	file, _ := os.OpenFile(string(CurrentSession.Direccion[:]), os.O_RDWR, 0777)
+	direcciones := strings.Split(string(CurrentSession.Direccion[:]), "\x00")
+	file, _ := os.OpenFile(direcciones[0], os.O_RDWR, 0777)
 	defer file.Close()
 	var cadena string = ""
 	var aux_id int = -1
@@ -1497,9 +1588,10 @@ func GetId_Grp() int {
 		fmt.Println("F perro")
 	}
 
-	file.Seek(CurrentSession.InicioSuper, 0)
-	TempTI := structs.SuperBloque{}
+	TempTI := structs.InodoTable{}
 	var sizetemp1 int = int(unsafe.Sizeof(TempTI))
+	seeking := super.S_inode_start + uint64(sizetemp1)
+	file.Seek(int64(seeking), 0)
 	data1 := leerBytes(file, sizetemp1)
 	buffer1 := bytes.NewBuffer(data1)
 	Errores1 := binary.Read(buffer1, binary.BigEndian, &inodo)
@@ -1521,7 +1613,8 @@ func GetId_Grp() int {
 					fmt.Println("F perro")
 				}
 			}
-			cadena += string(archivo.B_content[:])
+			archivoss := strings.Split(string(archivo.B_content[:]), "\x00")
+			cadena += archivoss[0]
 		}
 	}
 	token := strings.Split(cadena, "\n")
@@ -1546,7 +1639,8 @@ func GetId_Grp() int {
 }
 
 func GetId_User() int {
-	file, _ := os.OpenFile(string(CurrentSession.Direccion[:]), os.O_RDWR, 0777)
+	direcciones := strings.Split(string(CurrentSession.Direccion[:]), "\x00")
+	file, _ := os.OpenFile(direcciones[0], os.O_RDWR, 0777)
 	defer file.Close()
 	var cadena string = ""
 	var aux_id int = 0
@@ -1563,9 +1657,10 @@ func GetId_User() int {
 		fmt.Println("F perro")
 	}
 
-	file.Seek(CurrentSession.InicioSuper, 0)
-	TempTI := structs.SuperBloque{}
+	TempTI := structs.InodoTable{}
 	var sizetemp1 int = int(unsafe.Sizeof(TempTI))
+	seeking := super.S_inode_start + uint64(sizetemp1)
+	file.Seek(int64(seeking), 0)
 	data1 := leerBytes(file, sizetemp1)
 	buffer1 := bytes.NewBuffer(data1)
 	Errores1 := binary.Read(buffer1, binary.BigEndian, &inodo)
@@ -1587,7 +1682,8 @@ func GetId_User() int {
 					fmt.Println("F perro")
 				}
 			}
-			cadena += string(archivo.B_content[:])
+			archivoss := strings.Split(string(archivo.B_content[:]), "\x00")
+			cadena += archivoss[0]
 		}
 	}
 	token := strings.Split(cadena, "\n")
@@ -1652,7 +1748,8 @@ func VerificarDatos(user string, password string, direccion string) int {
 					fmt.Println("F perro")
 				}
 			}
-			cadena += string(archivo.B_content[:])
+			archivoss := strings.Split(string(archivo.B_content[:]), "\x00")
+			cadena += archivoss[0]
 		}
 	}
 	token := strings.Split(cadena, "\n")
@@ -1675,7 +1772,7 @@ func VerificarDatos(user string, password string, direccion string) int {
 					if strings.Compare(user_, user) == 0 {
 						if strings.Compare(password_, password) == 0 {
 							idEnvio, _ := strconv.Atoi(id)
-							copy(CurrentSession.Direccion[:], []byte(direccion))
+							copy(CurrentSession.Direccion[:], direccion)
 							CurrentSession.Id_user = int64(idEnvio)
 							CurrentSession.Id_grp = int64(BuscarExisteGrupo(group))
 							return 1
@@ -1700,7 +1797,8 @@ func PreLogin(direccion string, nombre string, user string, password string) int
 		MBR := structs.MBR{}
 		super := structs.SuperBloque{}
 		inodo := structs.InodoTable{}
-		file, _ := os.OpenFile(string(CurrentSession.Direccion[:]), os.O_RDWR, 0777)
+		direcciones := strings.Split(string(CurrentSession.Direccion[:]), "\x00")
+		file, _ := os.OpenFile(direcciones[0], os.O_RDWR, 0777)
 		defer file.Close()
 
 		file.Seek(0, 0)
@@ -1713,7 +1811,8 @@ func PreLogin(direccion string, nombre string, user string, password string) int
 			fmt.Println("F perro")
 		}
 
-		PartStartMBR, _ := strconv.Atoi(string(MBR.Mbr_partition[index].Part_start[:]))
+		archivoss := strings.Split(string(MBR.Mbr_partition[index].Part_start[:]), "\x00")
+		PartStartMBR, _ := strconv.Atoi(archivoss[0])
 		file.Seek(int64(PartStartMBR), 0)
 		Tempsuper := structs.SuperBloque{}
 		var sizetempsuper int = int(unsafe.Sizeof(Tempsuper))
@@ -1741,9 +1840,11 @@ func PreLogin(direccion string, nombre string, user string, password string) int
 		if errs2 != nil {
 			fmt.Println("ERROR WE")
 		}
-		currentSessionInicioSuper, _ := strconv.Atoi(string(MBR.Mbr_partition[index].Part_start[:]))
+		archivoss2 := strings.Split(string(MBR.Mbr_partition[index].Part_start[:]), "\x00")
+		archivoss3 := strings.Split(string(MBR.Mbr_partition[index].Part_fit[:]), "\x00")
+		currentSessionInicioSuper, _ := strconv.Atoi(archivoss2[0])
 		CurrentSession.InicioSuper = int64(currentSessionInicioSuper)
-		CurrentSession.Fit = MBR.Mbr_partition[index].Part_fit
+		copy(CurrentSession.Fit[:], archivoss3[0])
 		CurrentSession.Tipo_sistema = 2
 		return VerificarDatos(user, password, direccion)
 	}
@@ -1854,7 +1955,8 @@ func Mkusr(name string, passwords string, group string) {
 										usuarios := BuscarExisteUsuario(name)
 										if !usuarios {
 											idUser := GetId_User()
-											file, _ := os.OpenFile(string(CurrentSession.Direccion[:]), os.O_RDWR, 0777)
+											direcciones := strings.Split(string(CurrentSession.Direccion[:]), "\x00")
+											file, _ := os.OpenFile(direcciones[0], os.O_RDWR, 0777)
 											defer file.Close()
 											var cadena string = ""
 											super := structs.SuperBloque{}
@@ -1870,9 +1972,10 @@ func Mkusr(name string, passwords string, group string) {
 												fmt.Println("F perro")
 											}
 
-											file.Seek(CurrentSession.InicioSuper, 0)
-											TempTI := structs.SuperBloque{}
+											TempTI := structs.InodoTable{}
 											var sizetemp1 int = int(unsafe.Sizeof(TempTI))
+											seeking := super.S_inode_start + uint64(sizetemp1)
+											file.Seek(int64(seeking), 0)
 											data1 := leerBytes(file, sizetemp1)
 											buffer1 := bytes.NewBuffer(data1)
 											Errores1 := binary.Read(buffer1, binary.BigEndian, &inodo)
@@ -1894,7 +1997,8 @@ func Mkusr(name string, passwords string, group string) {
 															fmt.Println("F perro")
 														}
 													}
-													cadena += string(archivo.B_content[:])
+													archivoss := strings.Split(string(archivo.B_content[:]), "\x00")
+													cadena += archivoss[0]
 												}
 											}
 											nuevoId := strconv.Itoa(idUser)
@@ -1958,7 +2062,8 @@ func RMkusr(name string) {
 			if grupo != -1 {
 				usuarios := BuscarExisteUsuario(name)
 				if !usuarios {
-					file, _ := os.OpenFile(string(CurrentSession.Direccion[:]), os.O_RDWR, 0777)
+					direcciones := strings.Split(string(CurrentSession.Direccion[:]), "\x00")
+					file, _ := os.OpenFile(direcciones[0], os.O_RDWR, 0777)
 					defer file.Close()
 					var cadena string = ""
 					super := structs.SuperBloque{}
@@ -1974,9 +2079,10 @@ func RMkusr(name string) {
 						fmt.Println("F perro")
 					}
 
-					file.Seek(CurrentSession.InicioSuper, 0)
-					TempTI := structs.SuperBloque{}
+					TempTI := structs.InodoTable{}
 					var sizetemp1 int = int(unsafe.Sizeof(TempTI))
+					seeking := super.S_inode_start + uint64(sizetemp1)
+					file.Seek(int64(seeking), 0)
 					data1 := leerBytes(file, sizetemp1)
 					buffer1 := bytes.NewBuffer(data1)
 					Errores1 := binary.Read(buffer1, binary.BigEndian, &inodo)
@@ -1998,7 +2104,8 @@ func RMkusr(name string) {
 									fmt.Println("F perro")
 								}
 							}
-							cadena += string(archivo.B_content[:])
+							archivoss := strings.Split(string(archivo.B_content[:]), "\x00")
+							cadena += archivoss[0]
 						}
 					}
 					token := strings.Split(cadena, "\n")
@@ -2056,7 +2163,8 @@ func Mkgrp(name string) {
 			grupo := BuscarExisteGrupo(name)
 			if grupo == -1 {
 				idGro := GetId_Grp()
-				file, _ := os.OpenFile(string(CurrentSession.Direccion[:]), os.O_RDWR, 0777)
+				direcciones := strings.Split(string(CurrentSession.Direccion[:]), "\x00")
+				file, _ := os.OpenFile(direcciones[0], os.O_RDWR, 0777)
 				defer file.Close()
 				var cadena string = ""
 				super := structs.SuperBloque{}
@@ -2072,9 +2180,10 @@ func Mkgrp(name string) {
 					fmt.Println("F perro")
 				}
 
-				file.Seek(CurrentSession.InicioSuper, 0)
-				TempTI := structs.SuperBloque{}
+				TempTI := structs.InodoTable{}
 				var sizetemp1 int = int(unsafe.Sizeof(TempTI))
+				seeking := super.S_inode_start + uint64(sizetemp1)
+				file.Seek(int64(seeking), 0)
 				data1 := leerBytes(file, sizetemp1)
 				buffer1 := bytes.NewBuffer(data1)
 				Errores1 := binary.Read(buffer1, binary.BigEndian, &inodo)
@@ -2096,7 +2205,8 @@ func Mkgrp(name string) {
 								fmt.Println("F perro")
 							}
 						}
-						cadena += string(archivo.B_content[:])
+						archivoss := strings.Split(string(archivo.B_content[:]), "\x00")
+						cadena += archivoss[0]
 					}
 				}
 				nuevoId := strconv.Itoa(idGro)
@@ -2138,7 +2248,8 @@ func RMkgrp(name string) {
 		if CurrentSession.Id_user == 1 && CurrentSession.Id_grp == 1 {
 			grupo := BuscarExisteGrupo(name)
 			if grupo == -1 {
-				file, _ := os.OpenFile(string(CurrentSession.Direccion[:]), os.O_RDWR, 0777)
+				direcciones := strings.Split(string(CurrentSession.Direccion[:]), "\x00")
+				file, _ := os.OpenFile(direcciones[0], os.O_RDWR, 0777)
 				defer file.Close()
 				var cadena string = ""
 				super := structs.SuperBloque{}
@@ -2154,9 +2265,10 @@ func RMkgrp(name string) {
 					fmt.Println("F perro")
 				}
 
-				file.Seek(CurrentSession.InicioSuper, 0)
-				TempTI := structs.SuperBloque{}
+				TempTI := structs.InodoTable{}
 				var sizetemp1 int = int(unsafe.Sizeof(TempTI))
+				seeking := super.S_inode_start + uint64(sizetemp1)
+				file.Seek(int64(seeking), 0)
 				data1 := leerBytes(file, sizetemp1)
 				buffer1 := bytes.NewBuffer(data1)
 				Errores1 := binary.Read(buffer1, binary.BigEndian, &inodo)
@@ -2178,7 +2290,8 @@ func RMkgrp(name string) {
 								fmt.Println("F perro")
 							}
 						}
-						cadena += string(archivo.B_content[:])
+						archivoss := strings.Split(string(archivo.B_content[:]), "\x00")
+						cadena += archivoss[0]
 					}
 				}
 				NuevVar := "0" + ",G," + name + "\n"
